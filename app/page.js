@@ -98,7 +98,7 @@ export default function Home() {
                   borderRadius: '3px',
                   marginRight: '8px'
                 }}>
-                  {notice.noticeType || notice.noticeCode || 'Notice'}
+                  {notice.category || notice.noticeCode || 'Notice'}
                 </span>
                 <span style={{ fontSize: '12px', color: '#666' }}>
                   {notice.published ? new Date(notice.published).toLocaleDateString('en-GB', {
@@ -108,17 +108,11 @@ export default function Home() {
               </div>
             </div>
 
-            <h3 style={{ margin: '10px 0 5px', fontSize: '16px' }}>
+            <h3 style={{ margin: '10px 0 0', fontSize: '16px' }}>
               <a href={notice.link} target="_blank" rel="noopener noreferrer" style={{ color: '#1a1a1a', textDecoration: 'none' }}>
                 {notice.title || 'Untitled Notice'}
               </a>
             </h3>
-
-            {notice.category && (
-              <p style={{ margin: 0, fontSize: '13px', color: '#666' }}>
-                {notice.category}
-              </p>
-            )}
           </article>
         ))}
       </div>

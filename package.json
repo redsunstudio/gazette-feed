@@ -1,11 +1,15 @@
 {
   "name": "gazette-feed",
   "version": "1.0.0",
+  "private": true,
   "scripts": {
-    "dev": "serve . -l 3000",
-    "start": "serve . -l ${PORT:-3000}"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start -p ${PORT:-3000}"
   },
   "dependencies": {
-    "serve": "^14.2.5"
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }
