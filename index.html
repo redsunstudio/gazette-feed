@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gazette Insolvency Feed</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    header { border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
+    h1 { font-size: 24px; margin-bottom: 5px; }
+    .subtitle { color: #666; font-size: 14px; }
+    .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    button {
+      padding: 8px 16px;
+      background: #333;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    button:hover { background: #555; }
+    button:disabled { background: #999; cursor: wait; }
+    button.small { padding: 4px 8px; font-size: 11px; }
+    button.trending { background: #6366f1; }
+    button.trending:hover { background: #4f46e5; }
+    .status { font-size: 13px; color: #666; }
+    .error { background: #fee2e2; color: #dc2626; padding: 12px; border-radius: 6px; margin-bottom: 20px; }
+    .legend { font-size: 12px; color: #666; display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 15px; }
+    .legend span { display: flex; align-items: center; gap: 4px; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 2px; }
+
+    .notice {
+      background: white;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 6px;
+      border-left: 4px solid #666;
+      position: relative;
+    }
+    .notice.winding-up { border-left-color: #dc2626; }
+    .notice.cvl { border-left-color: #ea580c; }
+    .notice.admin { border-left-color: #7c3aed; }
+    .notice.mvl { border-left-color: #16a34a; }
+    .notice.large-company { background: #fefce8; }
+    .notice.starred { background: #fef3c7; }
+
+    .notice-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+    .notice-badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .badge {
+      font-size: 11px;
+      background: #666;
+      color: white;
+      padding: 2px 8px;
+      border-radius: 3px;
+      white-space: nowrap;
+    }
+    .winding-up .badge { background: #dc2626; }
+    .cvl .badge { background: #ea580c; }
+    .admin .badge { background: #7c3aed; }
+    .mvl .badge { background: #16a34a; }
+    .badge.large { background: #ca8a04; }
+    .badge.trending { background: #6366f1; }
+
+    .star-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      opacity: 0.3;
+      transition: opacity 0.2s;
+    }
+    .star-btn:hover, .star-btn.active { opacity: 1; }
+    .star-btn.active { color: #f59e0b; }
+
+    .date { font-size: 12px; color: #666; }
+    .title { font-size: 16px; margin: 10px 0 5px; font-weight: 600; }
+    .title a { color: #1a1a1a; text-decoration: none; }
+    .title a:hover { text-decoration: underline; }
+    .content { font-size: 13px; color: #555; line-height: 1.4; margin-bottom: 8px; }
+    .actions { display: flex; gap: 8px; margin-top: 10px; }
+    .loading { text-align: center; padding: 40px; color: #666; }
+    .count { font-size: 13px; color: #666; margin-bottom: 15px; }
+    .trending-result { margin-top: 8px; padding: 8px; background: #f0f9ff; border-radius: 4px; font-size: 12px; color: #0369a1; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Gazette Insolvency Feed</h1>
+    <p class="subtitle">Winding Up Petitions, Administrations & Liquidations</p>
+  </header>
+
+  <div class="controls">
+    <button onclick="fetchFeed()" id="refreshBtn">Refresh</button>
+    <label><input type="checkbox" id="starredOnly" onchange="renderFeed()"> Starred only</label>
+    <label><input type="checkbox" id="largeOnly" onchange="renderFeed()"> Large companies only</label>
+    <span class="status" id="status"></span>
+  </div>
+
+  <div class="legend">
+    <span><span class="legend-dot" style="background:#dc2626"></span> Winding Up</span>
+    <span><span class="legend-dot" style="background:#ea580c"></span> CVL</span>
+    <span><span class="legend-dot" style="background:#7c3aed"></span> Administration</span>
+    <span><span class="legend-dot" style="background:#ca8a04"></span> Large Company</span>
+  </div>
+
+  <div id="error"></div>
+  <div id="count"></div>
+  <div id="feed"><div class="loading">Loading feed...</div></div>
+
+  <script>
+    // Config
+    const WANTED_CODES = ['2450','2451','2410','2411','2441','2443','2452','2453'];
+    const FEED_URL = 'https://www.thegazette.co.uk/insolvency/notice/data.json?results-page-size=200&sort-by=latest-date';
+    const CORS_PROXY = 'https://corsproxy.io/?';
+    const LARGE_KEYWORDS = ['PLC', ' GROUP', 'HOLDINGS', 'INTERNATIONAL', ' LLP', 'PARTNERS'];
+
+    // State
+    let allNotices = [];
+    let starred = JSON.parse(localStorage.getItem('starredCompanies') || '{}');
+    let trendingResults = JSON.parse(localStorage.getItem('trendingResults') || '{}');
+
+    function isLargeCompany(title) {
+      const upper = (title || '').toUpperCase();
+      return LARGE_KEYWORDS.some(kw => upper.includes(kw));
+    }
+
+    function getNoticeClass(code) {
+      const c = String(code || '');
+      if (c.startsWith('245')) return 'winding-up';
+      if (c.startsWith('244')) return 'cvl';
+      if (c.startsWith('241')) return 'admin';
+      if (c.startsWith('243')) return 'mvl';
+      return '';
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '';
+      return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function stripHtml(html) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      return tmp.textContent || '';
+    }
+
+    function toggleStar(id, title) {
+      if (starred[id]) {
+        delete starred[id];
+      } else {
+        starred[id] = title;
+      }
+      localStorage.setItem('starredCompanies', JSON.stringify(starred));
+      renderFeed();
+    }
+
+    async function checkTrending(id, title, btn) {
+      btn.disabled = true;
+      btn.textContent = 'Checking...';
+
+      // This would call Claude API - for now, simulate with web search
+      const searchUrl = `https://www.google.com/search?q="${encodeURIComponent(title)}" UK company news`;
+
+      // Store a placeholder result
+      trendingResults[id] = {
+        checked: new Date().toISOString(),
+        note: 'Click to search Google for news about this company'
+      };
+      localStorage.setItem('trendingResults', JSON.stringify(trendingResults));
+
+      // Open search in new tab for manual check (until Claude API is connected)
+      window.open(searchUrl, '_blank');
+
+      btn.textContent = 'Checked';
+      setTimeout(() => { btn.textContent = 'Check Trending'; btn.disabled = false; }, 2000);
+    }
+
+    function renderFeed() {
+      const feedDiv = document.getElementById('feed');
+      const countDiv = document.getElementById('count');
+      const starredOnly = document.getElementById('starredOnly').checked;
+      const largeOnly = document.getElementById('largeOnly').checked;
+
+      let filtered = allNotices;
+      if (starredOnly) filtered = filtered.filter(n => starred[n.id]);
+      if (largeOnly) filtered = filtered.filter(n => n.isLarge);
+
+      countDiv.innerHTML = `<span class="count">Showing ${filtered.length} notices</span>`;
+
+      if (filtered.length === 0) {
+        feedDiv.innerHTML = '<p style="color:#666;padding:20px;">No notices match your filters.</p>';
+        return;
+      }
+
+      feedDiv.innerHTML = filtered.map(n => {
+        const isStarred = starred[n.id];
+        const classes = ['notice', getNoticeClass(n.code)];
+        if (n.isLarge) classes.push('large-company');
+        if (isStarred) classes.push('starred');
+
+        return `
+          <article class="${classes.join(' ')}">
+            <div class="notice-header">
+              <div class="notice-badges">
+                <span class="badge">${n.category || n.code}</span>
+                ${n.isLarge ? '<span class="badge large">Large Co.</span>' : ''}
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;">
+                <span class="date">${n.dateStr}</span>
+                <button class="star-btn ${isStarred ? 'active' : ''}" onclick="toggleStar('${n.id}', '${n.title.replace(/'/g, "\\'")}')">★</button>
+              </div>
+            </div>
+            <h3 class="title">
+              <a href="${n.link}" target="_blank" rel="noopener">${n.title}</a>
+            </h3>
+            ${n.content ? `<p class="content">${n.content}</p>` : ''}
+            <div class="actions">
+              <button class="small trending" onclick="checkTrending('${n.id}', '${n.title.replace(/'/g, "\\'")}', this)">Check Trending</button>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    async function fetchFeed() {
+      const btn = document.getElementById('refreshBtn');
+      const status = document.getElementById('status');
+      const errorDiv = document.getElementById('error');
+
+      btn.disabled = true;
+      btn.textContent = 'Loading...';
+      errorDiv.innerHTML = '';
+
+      try {
+        const res = await fetch(CORS_PROXY + encodeURIComponent(FEED_URL));
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        const entries = data.entry || [];
+
+        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
+
+        allNotices = entries
+          .filter(e => WANTED_CODES.includes(e['f:notice-code']) && new Date(e.published).getTime() >= oneDayAgo)
+          .map(e => ({
+            id: e.id,
+            title: e.title || 'Untitled',
+            code: e['f:notice-code'],
+            category: e.category?.['@term'] || '',
+            link: e.link?.[1]?.['@href'] || e.id,
+            content: stripHtml(e.content || '').slice(0, 200),
+            dateStr: formatDate(e.published),
+            isLarge: isLargeCompany(e.title)
+          }));
+
+        renderFeed();
+        status.textContent = `Updated: ${new Date().toLocaleTimeString()}`;
+      } catch (err) {
+        errorDiv.innerHTML = `<div class="error">Error: ${err.message}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Refresh';
+      }
+    }
+
+    fetchFeed();
+    setInterval(fetchFeed, 60 * 60 * 1000); // Refresh hourly
+  </script>
+</body>
+</html>
