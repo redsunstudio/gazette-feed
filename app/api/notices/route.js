@@ -71,24 +71,60 @@ function parseAtomFeed(xml) {
 
 export async function GET() {
   try {
-    // Use the Atom feed format which is more reliable for server-side fetching
-    const url = 'https://www.thegazette.co.uk/insolvency/data.atom?results-page-size=50&sort-by=latest-date'
+    // Try multiple endpoints in order of preference
+    const endpoints = [
+      'https://www.thegazette.co.uk/insolvency/data.feed?results-page-size=50',
+      'https://www.thegazette.co.uk/all-notices/insolvency/data.feed',
+    ]
 
-    const response = await fetch(url, {
-      headers: {
-        'Accept': 'application/atom+xml, application/xml, text/xml, */*',
-        'Accept-Language': 'en-GB,en;q=0.9'
-      },
-      cache: 'no-store',
-      redirect: 'follow'
-    })
+    let xmlText = null
+    let lastError = null
 
-    if (!response.ok) {
-      const text = await response.text()
-      throw new Error(`Gazette API error: ${response.status} - ${text.slice(0, 200)}`)
+    for (const url of endpoints) {
+      try {
+        const response = await fetch(url, {
+          cache: 'no-store',
+          redirect: 'follow'
+        })
+
+        if (response.ok) {
+          xmlText = await response.text()
+          break
+        }
+      } catch (e) {
+        lastError = e
+      }
     }
 
-    const xmlText = await response.text()
+    if (!xmlText) {
+      // Fallback: try the JSON API with no custom headers
+      const jsonUrl = 'https://www.thegazette.co.uk/insolvency/data.json?results-page-size=50'
+      const jsonResponse = await fetch(jsonUrl, { cache: 'no-store' })
+
+      if (jsonResponse.ok) {
+        const jsonData = await jsonResponse.json()
+        const notices = (jsonData.entry || []).map(entry => {
+          const links = entry.link || []
+          const pageLink = links.find(l => l['@rel'] === 'alternate')?.['@href'] || links[1]?.['@href'] || entry.id
+          return {
+            id: entry.id,
+            title: entry.title,
+            published: entry.published,
+            updated: entry.updated,
+            noticeCode: entry['f:notice-code'],
+            category: entry.category?.['@term'] || entry.category,
+            link: pageLink
+          }
+        })
+        return Response.json({
+          notices,
+          fetched: new Date().toISOString(),
+          total: jsonData['f:total'] || notices.length
+        })
+      }
+
+      throw new Error(lastError?.message || 'All Gazette endpoints failed')
+    }
 
     // Parse XML to extract entries
     const data = parseAtomFeed(xmlText)
