@@ -86,7 +86,9 @@ async function fetchFreshData() {
   const notices = allEntries
     .map(entry => {
       const links = entry.link || []
-      const pageLink = links.find(l => l['@rel'] === 'alternate')?.['@href'] || links[1]?.['@href'] || entry.id
+      // The human-readable page link has NO @rel attribute (e.g., https://www.thegazette.co.uk/notice/5041183)
+      const pageLink = links.find(l => !l['@rel'] && !l['@type'])?.['@href']
+        || `https://www.thegazette.co.uk/notice/${entry.id?.split('/').pop()}`
       const noticeCode = entry['f:notice-code']
       return {
         id: entry.id,
