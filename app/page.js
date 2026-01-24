@@ -12,17 +12,24 @@ export default function Home() {
   const [notices, setNotices] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [lastFetched, setLastFetched] = useState(null)
+  const [cacheInfo, setCacheInfo] = useState(null)
   const [activeFilter, setActiveFilter] = useState('all')
 
-  const fetchNotices = async () => {
+  const fetchNotices = async (forceRefresh = false) => {
     try {
       setLoading(true)
-      const res = await fetch('/api/notices')
+      const url = forceRefresh ? '/api/notices?refresh=true' : '/api/notices'
+      const res = await fetch(url)
       const data = await res.json()
-      if (data.error) throw new Error(data.error)
-      setNotices(data.notices)
-      setLastFetched(new Date().toLocaleTimeString())
+      if (data.error && !data.notices?.length) throw new Error(data.error)
+      setNotices(data.notices || [])
+      setCacheInfo({
+        cached: data.cached,
+        fetched: data.fetched,
+        cacheAge: data.cacheAge,
+        nextRefresh: data.nextRefresh,
+        stale: data.stale
+      })
       setError(null)
     } catch (err) {
       setError(err.message)
@@ -33,7 +40,8 @@ export default function Home() {
 
   useEffect(() => {
     fetchNotices()
-    const interval = setInterval(fetchNotices, 5 * 60 * 1000)
+    // Auto-refresh every 5 minutes
+    const interval = setInterval(() => fetchNotices(), 5 * 60 * 1000)
     return () => clearInterval(interval)
   }, [])
 
@@ -77,7 +85,17 @@ export default function Home() {
         <h1 style={{ margin: 0, fontSize: '24px' }}>Gazette Insolvency Feed</h1>
         <p style={{ margin: '5px 0 0', color: '#666', fontSize: '14px' }}>
           Monitoring liquidations, winding up petitions, and administrations
-          {lastFetched && <span> · Last updated: {lastFetched}</span>}
+          {cacheInfo && (
+            <span>
+              {' · '}
+              {cacheInfo.cached ? (
+                <>Cached {cacheInfo.cacheAge}s ago</>
+              ) : (
+                <>Fresh data</>
+              )}
+              {cacheInfo.stale && <span style={{ color: '#ea580c' }}> (stale)</span>}
+            </span>
+          )}
         </p>
       </header>
 
@@ -102,7 +120,7 @@ export default function Home() {
         ))}
 
         <button
-          onClick={fetchNotices}
+          onClick={() => fetchNotices(true)}
           disabled={loading}
           style={{
             marginLeft: 'auto',
@@ -115,7 +133,7 @@ export default function Home() {
             fontSize: '13px'
           }}
         >
-          {loading ? 'Refreshing...' : 'Refresh'}
+          {loading ? 'Refreshing...' : 'Force Refresh'}
         </button>
       </div>
 
