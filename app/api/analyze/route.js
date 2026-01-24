@@ -67,7 +67,7 @@ Format the response in clear sections with headers. Be factual and note when inf
       ],
       tools: [
         {
-          type: 'web_search',
+          type: 'web_search_20250305',
           name: 'web_search',
           max_uses: 10
         }
