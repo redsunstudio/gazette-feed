@@ -6,7 +6,7 @@ let cache = {
   timestamp: null
 }
 
-const CACHE_TTL = 5 * 60 * 1000 // 5 minutes in milliseconds
+const CACHE_TTL = 30 * 60 * 1000 // 30 minutes in milliseconds
 
 // Notice code prefixes we want to show:
 // 2410-2419: Administration
@@ -62,7 +62,7 @@ async function fetchFreshData() {
   const firstPage = await fetchPage(startDateStr, endDateStr, 1)
   const total = parseInt(firstPage['f:total'] || '0', 10)
   const pageSize = 100
-  const totalPages = Math.min(Math.ceil(total / pageSize), 10) // Cap at 10 pages (1000 results)
+  const totalPages = Math.min(Math.ceil(total / pageSize), 5) // Cap at 5 pages (500 results)
 
   // Collect all entries from first page
   let allEntries = firstPage.entry || []

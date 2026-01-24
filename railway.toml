@@ -1,0 +1,3 @@
+[deploy]
+# Enable sleep mode - app sleeps after 10 minutes of inactivity
+sleepApplication = true

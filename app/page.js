@@ -40,8 +40,8 @@ export default function Home() {
 
   useEffect(() => {
     fetchNotices()
-    // Auto-refresh every 5 minutes
-    const interval = setInterval(() => fetchNotices(), 5 * 60 * 1000)
+    // Auto-refresh every 30 minutes (matches server cache TTL)
+    const interval = setInterval(() => fetchNotices(), 30 * 60 * 1000)
     return () => clearInterval(interval)
   }, [])
 
