@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic'
 
 // Notice code prefixes we want to show:
+// 2410-2419: Administration
 // 2430-2439: Winding-up resolutions, liquidator appointments, creditor notices
 // 2440-2449: CVL meetings, liquidator appointments
 // 2450-2459: Winding up petitions
-// 2410-2419: Administration
 const ALLOWED_PREFIXES = ['241', '243', '244', '245']
 
 function isAllowedNotice(noticeCode) {
@@ -23,160 +23,84 @@ function getNoticeType(noticeCode) {
   return 'Insolvency'
 }
 
-// Check if date is within last 8 days (today + prior 7 days)
-function isWithinDateRange(dateStr) {
-  if (!dateStr) return false
-  const noticeDate = new Date(dateStr)
-  const now = new Date()
-  // Set to start of day 7 days ago
-  const cutoff = new Date(now)
-  cutoff.setDate(cutoff.getDate() - 7)
-  cutoff.setHours(0, 0, 0, 0)
-  return noticeDate >= cutoff
+// Get date string in YYYY-MM-DD format
+function formatDate(date) {
+  return date.toISOString().split('T')[0]
 }
 
-// Simple XML parser for Atom feed
-function parseAtomFeed(xml) {
-  const entries = []
-  const entryRegex = /<entry>([\s\S]*?)<\/entry>/g
-  let match
+// Fetch a single page of results
+async function fetchPage(startDate, endDate, page = 1) {
+  const url = `https://www.thegazette.co.uk/insolvency/notice/data.json?results-page-size=100&results-page=${page}&start-publish-date=${startDate}&end-publish-date=${endDate}`
 
-  while ((match = entryRegex.exec(xml)) !== null) {
-    const entry = match[1]
+  const response = await fetch(url, { cache: 'no-store' })
 
-    const getId = (str) => {
-      const m = str.match(/<id>([^<]*)<\/id>/)
-      return m ? m[1] : null
-    }
-
-    const getTitle = (str) => {
-      const m = str.match(/<title[^>]*>([^<]*)<\/title>/)
-      return m ? m[1] : null
-    }
-
-    const getPublished = (str) => {
-      const m = str.match(/<published>([^<]*)<\/published>/)
-      return m ? m[1] : null
-    }
-
-    const getUpdated = (str) => {
-      const m = str.match(/<updated>([^<]*)<\/updated>/)
-      return m ? m[1] : null
-    }
-
-    const getNoticeCode = (str) => {
-      const m = str.match(/<f:notice-code>([^<]*)<\/f:notice-code>/)
-      return m ? m[1] : null
-    }
-
-    const getCategory = (str) => {
-      const m = str.match(/<category[^>]*term="([^"]*)"/)
-      return m ? m[1] : null
-    }
-
-    const getLink = (str) => {
-      // Look for alternate XHTML link first
-      const altMatch = str.match(/<link[^>]*rel="alternate"[^>]*type="application\/xhtml\+xml"[^>]*href="([^"]*)"/)
-      if (altMatch) return altMatch[1]
-      // Fallback to any alternate link
-      const anyAlt = str.match(/<link[^>]*rel="alternate"[^>]*href="([^"]*)"/)
-      if (anyAlt) return anyAlt[1]
-      // Fallback to first link
-      const firstLink = str.match(/<link[^>]*href="([^"]*)"/)
-      return firstLink ? firstLink[1] : null
-    }
-
-    const noticeCode = getNoticeCode(entry)
-    entries.push({
-      id: getId(entry),
-      title: getTitle(entry),
-      published: getPublished(entry),
-      updated: getUpdated(entry),
-      noticeCode,
-      noticeType: getNoticeType(noticeCode),
-      category: getCategory(entry),
-      link: getLink(entry)
-    })
+  if (!response.ok) {
+    throw new Error(`Gazette API error: ${response.status}`)
   }
 
-  // Get total count
-  const totalMatch = xml.match(/<f:total>([^<]*)<\/f:total>/)
-  const total = totalMatch ? parseInt(totalMatch[1], 10) : entries.length
-
-  return { notices: entries, total }
+  return response.json()
 }
 
 export async function GET() {
   try {
-    // Try multiple endpoints in order of preference
-    const endpoints = [
-      'https://www.thegazette.co.uk/insolvency/data.feed?results-page-size=200',
-      'https://www.thegazette.co.uk/all-notices/insolvency/data.feed',
-    ]
+    // Calculate date range (today + prior 7 days)
+    const now = new Date()
+    const startDate = new Date(now)
+    startDate.setDate(startDate.getDate() - 7)
 
-    let xmlText = null
-    let lastError = null
+    const startDateStr = formatDate(startDate)
+    const endDateStr = formatDate(now)
 
-    for (const url of endpoints) {
-      try {
-        const response = await fetch(url, {
-          cache: 'no-store',
-          redirect: 'follow'
-        })
+    // Fetch first page to get total count
+    const firstPage = await fetchPage(startDateStr, endDateStr, 1)
+    const total = parseInt(firstPage['f:total'] || '0', 10)
+    const pageSize = 100
+    const totalPages = Math.min(Math.ceil(total / pageSize), 10) // Cap at 10 pages (1000 results)
 
-        if (response.ok) {
-          xmlText = await response.text()
-          break
+    // Collect all entries from first page
+    let allEntries = firstPage.entry || []
+
+    // Fetch remaining pages in parallel (pages 2-10)
+    if (totalPages > 1) {
+      const pagePromises = []
+      for (let page = 2; page <= totalPages; page++) {
+        pagePromises.push(fetchPage(startDateStr, endDateStr, page))
+      }
+
+      const pages = await Promise.all(pagePromises)
+      for (const pageData of pages) {
+        if (pageData.entry) {
+          allEntries = allEntries.concat(pageData.entry)
         }
-      } catch (e) {
-        lastError = e
       }
     }
 
-    if (!xmlText) {
-      // Fallback: try the JSON API with no custom headers
-      const jsonUrl = 'https://www.thegazette.co.uk/insolvency/data.json?results-page-size=200'
-      const jsonResponse = await fetch(jsonUrl, { cache: 'no-store' })
-
-      if (jsonResponse.ok) {
-        const jsonData = await jsonResponse.json()
-        const notices = (jsonData.entry || [])
-          .map(entry => {
-            const links = entry.link || []
-            const pageLink = links.find(l => l['@rel'] === 'alternate')?.['@href'] || links[1]?.['@href'] || entry.id
-            const noticeCode = entry['f:notice-code']
-            return {
-              id: entry.id,
-              title: entry.title,
-              published: entry.published,
-              updated: entry.updated,
-              noticeCode,
-              noticeType: getNoticeType(noticeCode),
-              category: entry.category?.['@term'] || entry.category,
-              link: pageLink
-            }
-          })
-          .filter(notice => isAllowedNotice(notice.noticeCode) && isWithinDateRange(notice.published))
-        return Response.json({
-          notices,
-          fetched: new Date().toISOString(),
-          total: notices.length
-        })
-      }
-
-      throw new Error(lastError?.message || 'All Gazette endpoints failed')
-    }
-
-    // Parse XML to extract entries and filter
-    const data = parseAtomFeed(xmlText)
-    const filteredNotices = data.notices.filter(notice =>
-      isAllowedNotice(notice.noticeCode) && isWithinDateRange(notice.published)
-    )
+    // Transform and filter entries
+    const notices = allEntries
+      .map(entry => {
+        const links = entry.link || []
+        const pageLink = links.find(l => l['@rel'] === 'alternate')?.['@href'] || links[1]?.['@href'] || entry.id
+        const noticeCode = entry['f:notice-code']
+        return {
+          id: entry.id,
+          title: entry.title,
+          published: entry.published,
+          updated: entry.updated,
+          noticeCode,
+          noticeType: getNoticeType(noticeCode),
+          category: entry.category?.['@term'] || entry.category,
+          link: pageLink
+        }
+      })
+      .filter(notice => isAllowedNotice(notice.noticeCode))
+      .sort((a, b) => new Date(b.published) - new Date(a.published))
 
     return Response.json({
-      notices: filteredNotices,
+      notices,
       fetched: new Date().toISOString(),
-      total: filteredNotices.length
+      total: notices.length,
+      dateRange: { start: startDateStr, end: endDateStr },
+      totalInGazette: total
     })
   } catch (error) {
     console.error('Error fetching Gazette:', error)
