@@ -1,10 +1,11 @@
 export const dynamic = 'force-dynamic'
 
 // Notice code prefixes we want to show:
+// 2430-2439: Winding-up resolutions, liquidator appointments, creditor notices
+// 2440-2449: CVL meetings, liquidator appointments
 // 2450-2459: Winding up petitions
-// 2440-2449: Liquidations (CVL, MVL, appointments)
 // 2410-2419: Administration
-const ALLOWED_PREFIXES = ['245', '244', '241']
+const ALLOWED_PREFIXES = ['241', '243', '244', '245']
 
 function isAllowedNotice(noticeCode) {
   if (!noticeCode) return false
@@ -16,7 +17,8 @@ function getNoticeType(noticeCode) {
   if (!noticeCode) return 'Notice'
   const code = String(noticeCode)
   if (code.startsWith('245')) return 'Winding Up Petition'
-  if (code.startsWith('244')) return 'Liquidation'
+  if (code.startsWith('244')) return 'Liquidation (CVL)'
+  if (code.startsWith('243')) return 'Winding Up / Liquidation'
   if (code.startsWith('241')) return 'Administration'
   return 'Insolvency'
 }
@@ -108,7 +110,7 @@ export async function GET() {
   try {
     // Try multiple endpoints in order of preference
     const endpoints = [
-      'https://www.thegazette.co.uk/insolvency/data.feed?results-page-size=50',
+      'https://www.thegazette.co.uk/insolvency/data.feed?results-page-size=200',
       'https://www.thegazette.co.uk/all-notices/insolvency/data.feed',
     ]
 
@@ -133,7 +135,7 @@ export async function GET() {
 
     if (!xmlText) {
       // Fallback: try the JSON API with no custom headers
-      const jsonUrl = 'https://www.thegazette.co.uk/insolvency/data.json?results-page-size=50'
+      const jsonUrl = 'https://www.thegazette.co.uk/insolvency/data.json?results-page-size=200'
       const jsonResponse = await fetch(jsonUrl, { cache: 'no-store' })
 
       if (jsonResponse.ok) {

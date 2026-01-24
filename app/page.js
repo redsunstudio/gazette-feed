@@ -35,6 +35,7 @@ export default function Home() {
     const c = String(code)
     if (c.startsWith('245')) return '#dc2626' // Winding up petitions - red
     if (c.startsWith('244')) return '#ea580c' // CVL - orange
+    if (c.startsWith('243')) return '#d97706' // Winding up / liquidation - amber
     if (c.startsWith('241')) return '#7c3aed' // Administration - purple
     if (c.startsWith('250')) return '#0891b2' // Personal insolvency - cyan
     return '#666'
