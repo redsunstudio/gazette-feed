@@ -23,14 +23,14 @@ function getNoticeType(noticeCode) {
   return 'Insolvency'
 }
 
-// Check if date is within last 4 days (today + prior 3 days)
+// Check if date is within last 8 days (today + prior 7 days)
 function isWithinDateRange(dateStr) {
   if (!dateStr) return false
   const noticeDate = new Date(dateStr)
   const now = new Date()
-  // Set to start of day 3 days ago
+  // Set to start of day 7 days ago
   const cutoff = new Date(now)
-  cutoff.setDate(cutoff.getDate() - 3)
+  cutoff.setDate(cutoff.getDate() - 7)
   cutoff.setHours(0, 0, 0, 0)
   return noticeDate >= cutoff
 }
