@@ -62,7 +62,7 @@ Parent companies, subsidiaries, connected businesses, other companies with same 
 Be thorough and specific. Include actual names, addresses, and numbers wherever possible. State clearly if specific information could not be found.`
 
     const response = await client.messages.create({
-      model: 'claude-haiku-4-20250514',
+      model: 'claude-3-5-haiku-20241022',
       max_tokens: 4096,
       messages: [
         {
