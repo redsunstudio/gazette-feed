@@ -21,6 +21,18 @@ function getNoticeType(noticeCode) {
   return 'Insolvency'
 }
 
+// Check if date is within last 4 days (today + prior 3 days)
+function isWithinDateRange(dateStr) {
+  if (!dateStr) return false
+  const noticeDate = new Date(dateStr)
+  const now = new Date()
+  // Set to start of day 3 days ago
+  const cutoff = new Date(now)
+  cutoff.setDate(cutoff.getDate() - 3)
+  cutoff.setHours(0, 0, 0, 0)
+  return noticeDate >= cutoff
+}
+
 // Simple XML parser for Atom feed
 function parseAtomFeed(xml) {
   const entries = []
@@ -142,7 +154,7 @@ export async function GET() {
               link: pageLink
             }
           })
-          .filter(notice => isAllowedNotice(notice.noticeCode))
+          .filter(notice => isAllowedNotice(notice.noticeCode) && isWithinDateRange(notice.published))
         return Response.json({
           notices,
           fetched: new Date().toISOString(),
@@ -155,7 +167,9 @@ export async function GET() {
 
     // Parse XML to extract entries and filter
     const data = parseAtomFeed(xmlText)
-    const filteredNotices = data.notices.filter(notice => isAllowedNotice(notice.noticeCode))
+    const filteredNotices = data.notices.filter(notice =>
+      isAllowedNotice(notice.noticeCode) && isWithinDateRange(notice.published)
+    )
 
     return Response.json({
       notices: filteredNotices,
