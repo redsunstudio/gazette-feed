@@ -1,5 +1,26 @@
 export const dynamic = 'force-dynamic'
 
+// Notice code prefixes we want to show:
+// 2450-2459: Winding up petitions
+// 2440-2449: Liquidations (CVL, MVL, appointments)
+// 2410-2419: Administration
+const ALLOWED_PREFIXES = ['245', '244', '241']
+
+function isAllowedNotice(noticeCode) {
+  if (!noticeCode) return false
+  const code = String(noticeCode)
+  return ALLOWED_PREFIXES.some(prefix => code.startsWith(prefix))
+}
+
+function getNoticeType(noticeCode) {
+  if (!noticeCode) return 'Notice'
+  const code = String(noticeCode)
+  if (code.startsWith('245')) return 'Winding Up Petition'
+  if (code.startsWith('244')) return 'Liquidation'
+  if (code.startsWith('241')) return 'Administration'
+  return 'Insolvency'
+}
+
 // Simple XML parser for Atom feed
 function parseAtomFeed(xml) {
   const entries = []
@@ -51,12 +72,14 @@ function parseAtomFeed(xml) {
       return firstLink ? firstLink[1] : null
     }
 
+    const noticeCode = getNoticeCode(entry)
     entries.push({
       id: getId(entry),
       title: getTitle(entry),
       published: getPublished(entry),
       updated: getUpdated(entry),
-      noticeCode: getNoticeCode(entry),
+      noticeCode,
+      noticeType: getNoticeType(noticeCode),
       category: getCategory(entry),
       link: getLink(entry)
     })
@@ -103,36 +126,41 @@ export async function GET() {
 
       if (jsonResponse.ok) {
         const jsonData = await jsonResponse.json()
-        const notices = (jsonData.entry || []).map(entry => {
-          const links = entry.link || []
-          const pageLink = links.find(l => l['@rel'] === 'alternate')?.['@href'] || links[1]?.['@href'] || entry.id
-          return {
-            id: entry.id,
-            title: entry.title,
-            published: entry.published,
-            updated: entry.updated,
-            noticeCode: entry['f:notice-code'],
-            category: entry.category?.['@term'] || entry.category,
-            link: pageLink
-          }
-        })
+        const notices = (jsonData.entry || [])
+          .map(entry => {
+            const links = entry.link || []
+            const pageLink = links.find(l => l['@rel'] === 'alternate')?.['@href'] || links[1]?.['@href'] || entry.id
+            const noticeCode = entry['f:notice-code']
+            return {
+              id: entry.id,
+              title: entry.title,
+              published: entry.published,
+              updated: entry.updated,
+              noticeCode,
+              noticeType: getNoticeType(noticeCode),
+              category: entry.category?.['@term'] || entry.category,
+              link: pageLink
+            }
+          })
+          .filter(notice => isAllowedNotice(notice.noticeCode))
         return Response.json({
           notices,
           fetched: new Date().toISOString(),
-          total: jsonData['f:total'] || notices.length
+          total: notices.length
         })
       }
 
       throw new Error(lastError?.message || 'All Gazette endpoints failed')
     }
 
-    // Parse XML to extract entries
+    // Parse XML to extract entries and filter
     const data = parseAtomFeed(xmlText)
+    const filteredNotices = data.notices.filter(notice => isAllowedNotice(notice.noticeCode))
 
     return Response.json({
-      notices: data.notices,
+      notices: filteredNotices,
       fetched: new Date().toISOString(),
-      total: data.total
+      total: filteredNotices.length
     })
   } catch (error) {
     console.error('Error fetching Gazette:', error)

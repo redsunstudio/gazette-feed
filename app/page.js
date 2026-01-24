@@ -98,7 +98,7 @@ export default function Home() {
                   borderRadius: '3px',
                   marginRight: '8px'
                 }}>
-                  {notice.category || notice.noticeCode || 'Notice'}
+                  {notice.noticeType || notice.category || 'Notice'}
                 </span>
                 <span style={{ fontSize: '12px', color: '#666' }}>
                   {notice.published ? new Date(notice.published).toLocaleDateString('en-GB', {
