@@ -8,6 +8,8 @@
     "start": "next start -p ${PORT:-3000}"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.2",
+    "jspdf": "^4.0.0",
     "next": "^15.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
