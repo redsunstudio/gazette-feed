@@ -3,9 +3,9 @@ import { useState, useEffect } from 'react'
 
 const FILTERS = [
   { id: 'all', label: 'All', prefixes: null },
-  { id: 'petitions', label: 'Winding Up Petitions', prefixes: ['245'], color: '#dc2626' },
-  { id: 'liquidations', label: 'Liquidations', prefixes: ['243', '244'], color: '#ea580c' },
-  { id: 'administrations', label: 'Administrations', prefixes: ['241'], color: '#7c3aed' },
+  { id: 'petitions', label: 'Winding Up Petitions', prefixes: ['245'] },
+  { id: 'liquidations', label: 'Liquidations', prefixes: ['243', '244'] },
+  { id: 'administrations', label: 'Administrations', prefixes: ['241'] },
 ]
 
 export default function Home() {
@@ -93,16 +93,18 @@ export default function Home() {
         return (
           <div key={i} style={{ marginBottom: '24px' }}>
             <h4 style={{
-              color: '#00d46a',
+              color: '#fff',
               fontSize: '11px',
               fontWeight: '600',
               letterSpacing: '1px',
               marginBottom: '8px',
-              textTransform: 'uppercase'
+              textTransform: 'uppercase',
+              borderBottom: '1px solid #27272a',
+              paddingBottom: '8px'
             }}>
               {header}
             </h4>
-            <div style={{ color: '#e5e5e5', lineHeight: '1.7' }}>
+            <div style={{ color: '#a1a1aa', lineHeight: '1.7', fontSize: '13px' }}>
               {content}
             </div>
           </div>
@@ -110,7 +112,7 @@ export default function Home() {
       }
 
       return (
-        <div key={i} style={{ marginBottom: '16px', color: '#e5e5e5', lineHeight: '1.7' }}>
+        <div key={i} style={{ marginBottom: '16px', color: '#a1a1aa', lineHeight: '1.7', fontSize: '13px' }}>
           {section}
         </div>
       )
@@ -164,7 +166,7 @@ export default function Home() {
       if (/^[A-Z][A-Z\s]+$/.test(line.trim())) {
         y += 5
         doc.setFont('helvetica', 'bold')
-        doc.setTextColor(0, 150, 80)
+        doc.setTextColor(60, 60, 60)
         doc.text(line, margin, y)
         doc.setFont('helvetica', 'normal')
         doc.setTextColor(0, 0, 0)
@@ -200,17 +202,6 @@ export default function Home() {
     return () => clearInterval(interval)
   }, [])
 
-  const getTypeColor = (code) => {
-    if (!code) return '#71717a'
-    const c = String(code)
-    if (c.startsWith('245')) return '#dc2626'
-    if (c.startsWith('244')) return '#ea580c'
-    if (c.startsWith('243')) return '#d97706'
-    if (c.startsWith('241')) return '#7c3aed'
-    if (c.startsWith('250')) return '#0891b2'
-    return '#71717a'
-  }
-
   const filteredNotices = notices.filter(notice => {
     if (activeFilter === 'all') return true
     const filter = FILTERS.find(f => f.id === activeFilter)
@@ -235,310 +226,321 @@ export default function Home() {
   const counts = getCounts()
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      backgroundColor: '#000',
-      color: '#fff',
-      fontFamily: 'Inter, SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif'
-    }}>
-      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px' }}>
-        <header style={{ marginBottom: '32px', borderBottom: '1px solid #27272a', paddingBottom: '16px' }}>
-          <h1 style={{
-            margin: 0,
-            fontSize: '24px',
-            fontWeight: '300',
-            letterSpacing: '-0.5px'
-          }}>
-            GAZETTE INSOLVENCY FEED
-          </h1>
-          <p style={{ margin: '8px 0 0', color: '#71717a', fontSize: '13px' }}>
-            Monitoring liquidations, winding up petitions, and administrations
-            {cacheInfo && (
-              <span>
-                {' · '}
-                {cacheInfo.cached ? (
-                  <>Cached {Math.round(cacheInfo.cacheAge / 60)}m ago</>
-                ) : (
-                  <span style={{ color: '#00d46a' }}>Fresh data</span>
-                )}
-                {cacheInfo.stale && <span style={{ color: '#ffa500' }}> (stale)</span>}
-              </span>
-            )}
-          </p>
-        </header>
+    <>
+      <style>{`
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { margin: 0; padding: 0; background: #000; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+      `}</style>
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#000',
+        color: '#fff',
+        fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
+      }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px 24px' }}>
+          <header style={{ marginBottom: '32px' }}>
+            <h1 style={{
+              margin: 0,
+              fontSize: '13px',
+              fontWeight: '500',
+              letterSpacing: '2px',
+              color: '#71717a',
+              textTransform: 'uppercase'
+            }}>
+              GAZETTE FEED
+            </h1>
+            <p style={{ margin: '8px 0 0', color: '#52525b', fontSize: '12px' }}>
+              UK insolvency notices
+              {cacheInfo && (
+                <span>
+                  {' · '}
+                  {cacheInfo.cached ? (
+                    <>{Math.round(cacheInfo.cacheAge / 60)}m ago</>
+                  ) : (
+                    <>live</>
+                  )}
+                  {cacheInfo.stale && <span style={{ color: '#a1a1aa' }}> (stale)</span>}
+                </span>
+              )}
+            </p>
+          </header>
 
-        <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
-          {FILTERS.map(filter => (
+          <div style={{ display: 'flex', gap: '6px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {FILTERS.map(filter => (
+              <button
+                key={filter.id}
+                onClick={() => setActiveFilter(filter.id)}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: activeFilter === filter.id ? '#fff' : 'transparent',
+                  color: activeFilter === filter.id ? '#000' : '#52525b',
+                  border: `1px solid ${activeFilter === filter.id ? '#fff' : '#27272a'}`,
+                  borderRadius: '3px',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: '500',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {filter.label} ({counts[filter.id] || 0})
+              </button>
+            ))}
+
             <button
-              key={filter.id}
-              onClick={() => setActiveFilter(filter.id)}
+              onClick={() => fetchNotices(true)}
+              disabled={loading}
               style={{
-                padding: '8px 16px',
-                backgroundColor: activeFilter === filter.id ? (filter.color || '#fff') : 'transparent',
-                color: activeFilter === filter.id ? '#fff' : '#71717a',
-                border: `1px solid ${activeFilter === filter.id ? (filter.color || '#fff') : '#27272a'}`,
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: '500',
-                transition: 'all 0.2s ease',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px'
+                marginLeft: 'auto',
+                padding: '6px 12px',
+                backgroundColor: 'transparent',
+                color: '#52525b',
+                border: '1px solid #27272a',
+                borderRadius: '3px',
+                cursor: loading ? 'wait' : 'pointer',
+                fontSize: '11px',
+                fontWeight: '500'
               }}
             >
-              {filter.label} ({counts[filter.id] || 0})
+              {loading ? '...' : 'Refresh'}
             </button>
-          ))}
-
-          <button
-            onClick={() => fetchNotices(true)}
-            disabled={loading}
-            style={{
-              marginLeft: 'auto',
-              padding: '8px 16px',
-              backgroundColor: '#fff',
-              color: '#000',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: loading ? 'wait' : 'pointer',
-              fontSize: '12px',
-              fontWeight: '500',
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px'
-            }}
-          >
-            {loading ? 'Refreshing...' : 'Refresh'}
-          </button>
-        </div>
-
-        {error && (
-          <div style={{
-            padding: '12px 16px',
-            backgroundColor: 'rgba(255,59,59,0.1)',
-            border: '1px solid #ff3b3b',
-            color: '#ff3b3b',
-            borderRadius: '4px',
-            marginBottom: '24px',
-            fontSize: '13px'
-          }}>
-            {error}
           </div>
-        )}
 
-        <div>
-          {filteredNotices.length === 0 && !loading && (
-            <p style={{ color: '#71717a' }}>No notices found.</p>
+          {error && (
+            <div style={{
+              padding: '12px 16px',
+              backgroundColor: 'rgba(239,68,68,0.1)',
+              border: '1px solid #991b1b',
+              color: '#fca5a5',
+              borderRadius: '3px',
+              marginBottom: '24px',
+              fontSize: '12px'
+            }}>
+              {error}
+            </div>
           )}
 
-          {filteredNotices.map((notice, i) => (
-            <article
-              key={notice.id || i}
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.03)',
-                padding: '16px 20px',
-                marginBottom: '8px',
-                borderRadius: '4px',
-                border: '1px solid #27272a',
-                borderLeft: `3px solid ${getTypeColor(notice.noticeCode)}`
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ marginBottom: '8px' }}>
+          <div>
+            {filteredNotices.length === 0 && !loading && (
+              <p style={{ color: '#52525b', fontSize: '13px' }}>No notices found.</p>
+            )}
+
+            {filteredNotices.map((notice, i) => (
+              <article
+                key={notice.id || i}
+                style={{
+                  padding: '14px 0',
+                  borderBottom: '1px solid #18181b',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: '16px'
+                }}
+              >
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{
                       fontSize: '10px',
-                      backgroundColor: getTypeColor(notice.noticeCode),
-                      color: 'white',
-                      padding: '3px 8px',
-                      borderRadius: '2px',
-                      marginRight: '10px',
-                      fontWeight: '500',
+                      color: '#52525b',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
                     }}>
                       {notice.noticeType || 'Notice'}
                     </span>
-                    <span style={{ fontSize: '12px', color: '#71717a' }}>
+                    <span style={{ color: '#27272a' }}>·</span>
+                    <span style={{ fontSize: '11px', color: '#3f3f46' }}>
                       {notice.published ? new Date(notice.published).toLocaleDateString('en-GB', {
-                        day: 'numeric', month: 'short', year: 'numeric'
+                        day: 'numeric', month: 'short'
                       }) : ''}
                     </span>
                   </div>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '400' }}>
-                    <a
-                      href={notice.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: '#fff', textDecoration: 'none' }}
-                      onMouseOver={(e) => e.target.style.color = '#00d46a'}
-                      onMouseOut={(e) => e.target.style.color = '#fff'}
-                    >
-                      {notice.title || 'Untitled Notice'}
-                    </a>
-                  </h3>
+                  <a
+                    href={notice.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      color: '#e4e4e7',
+                      textDecoration: 'none',
+                      fontSize: '14px',
+                      lineHeight: '1.4',
+                      display: 'block'
+                    }}
+                    onMouseOver={(e) => e.target.style.color = '#fff'}
+                    onMouseOut={(e) => e.target.style.color = '#e4e4e7'}
+                  >
+                    {notice.title || 'Untitled Notice'}
+                  </a>
                 </div>
                 <button
                   onClick={() => analyzeCompany(notice)}
                   disabled={analyzing === notice.id}
                   style={{
-                    padding: '6px 14px',
-                    background: 'linear-gradient(135deg, #00d46a 0%, #00b85c 100%)',
-                    color: '#000',
-                    border: 'none',
+                    padding: '5px 10px',
+                    backgroundColor: 'transparent',
+                    color: '#52525b',
+                    border: '1px solid #27272a',
                     borderRadius: '3px',
                     cursor: analyzing === notice.id ? 'wait' : 'pointer',
-                    fontSize: '11px',
-                    fontWeight: '600',
+                    fontSize: '10px',
+                    fontWeight: '500',
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0
                   }}
+                  onMouseOver={(e) => { if (analyzing !== notice.id) { e.target.style.borderColor = '#3f3f46'; e.target.style.color = '#a1a1aa' }}}
+                  onMouseOut={(e) => { e.target.style.borderColor = '#27272a'; e.target.style.color = '#52525b' }}
                 >
-                  {analyzing === notice.id ? 'Analyzing...' : 'Analyze'}
+                  {analyzing === notice.id ? '...' : 'Analyze'}
                 </button>
-              </div>
-            </article>
-          ))}
+              </article>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Analysis Modal */}
-      {showModal && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(0,0,0,0.85)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '20px',
-          backdropFilter: 'blur(4px)'
-        }}>
+        {/* Analysis Modal */}
+        {showModal && (
           <div style={{
-            backgroundColor: '#0a0a0a',
-            border: '1px solid #27272a',
-            borderRadius: '8px',
-            maxWidth: '900px',
-            width: '100%',
-            maxHeight: '90vh',
-            overflow: 'hidden',
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.9)',
             display: 'flex',
-            flexDirection: 'column'
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px'
           }}>
-            {/* Modal Header */}
             <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid #27272a',
+              backgroundColor: '#0a0a0a',
+              border: '1px solid #1f1f1f',
+              borderRadius: '4px',
+              maxWidth: '700px',
+              width: '100%',
+              maxHeight: '85vh',
+              overflow: 'hidden',
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              backgroundColor: '#000'
+              flexDirection: 'column'
             }}>
-              <div>
-                <p style={{
-                  margin: 0,
-                  fontSize: '10px',
-                  color: '#00d46a',
-                  textTransform: 'uppercase',
-                  letterSpacing: '1px',
-                  marginBottom: '4px'
-                }}>
-                  Intelligence Report
-                </p>
-                <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '400' }}>
-                  {analyzing ? 'Analyzing...' : (analysisResult?.companyName || 'Company Analysis')}
-                </h2>
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                {analysisResult && (
+              {/* Modal Header */}
+              <div style={{
+                padding: '16px 20px',
+                borderBottom: '1px solid #1f1f1f',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center'
+              }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '10px',
+                    color: '#52525b',
+                    textTransform: 'uppercase',
+                    letterSpacing: '1px',
+                    marginBottom: '2px'
+                  }}>
+                    Report
+                  </p>
+                  <h2 style={{
+                    margin: 0,
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    color: '#e4e4e7',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {analyzing ? 'Analyzing...' : (analysisResult?.companyName || 'Company Analysis')}
+                  </h2>
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                  {analysisResult && (
+                    <button
+                      onClick={downloadPDF}
+                      style={{
+                        padding: '6px 12px',
+                        backgroundColor: '#fff',
+                        color: '#000',
+                        border: 'none',
+                        borderRadius: '3px',
+                        cursor: 'pointer',
+                        fontSize: '10px',
+                        fontWeight: '600',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px'
+                      }}
+                    >
+                      PDF
+                    </button>
+                  )}
                   <button
-                    onClick={downloadPDF}
+                    onClick={closeModal}
                     style={{
-                      padding: '8px 16px',
-                      background: 'linear-gradient(135deg, #00d46a 0%, #00b85c 100%)',
-                      color: '#000',
-                      border: 'none',
+                      padding: '6px 12px',
+                      backgroundColor: 'transparent',
+                      color: '#52525b',
+                      border: '1px solid #27272a',
                       borderRadius: '3px',
                       cursor: 'pointer',
-                      fontSize: '11px',
-                      fontWeight: '600',
+                      fontSize: '10px',
+                      fontWeight: '500',
                       textTransform: 'uppercase',
                       letterSpacing: '0.5px'
                     }}
                   >
-                    Download PDF
+                    Close
                   </button>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div style={{
+                padding: '20px',
+                overflow: 'auto',
+                flex: 1
+              }}>
+                {analyzing && (
+                  <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+                    <div style={{
+                      width: '32px',
+                      height: '32px',
+                      border: '2px solid #27272a',
+                      borderTopColor: '#52525b',
+                      borderRadius: '50%',
+                      animation: 'spin 1s linear infinite',
+                      margin: '0 auto 16px'
+                    }} />
+                    <p style={{ color: '#71717a', fontSize: '12px', margin: 0 }}>Searching...</p>
+                  </div>
                 )}
-                <button
-                  onClick={closeModal}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: 'transparent',
-                    color: '#71717a',
-                    border: '1px solid #27272a',
+
+                {analysisError && (
+                  <div style={{
+                    padding: '12px 16px',
+                    backgroundColor: 'rgba(239,68,68,0.1)',
+                    border: '1px solid #991b1b',
+                    color: '#fca5a5',
                     borderRadius: '3px',
-                    cursor: 'pointer',
-                    fontSize: '11px',
-                    fontWeight: '500',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
-                  }}
-                >
-                  Close
-                </button>
+                    fontSize: '12px'
+                  }}>
+                    {analysisError}
+                  </div>
+                )}
+
+                {analysisResult && (
+                  <div>
+                    <p style={{ color: '#3f3f46', fontSize: '10px', marginBottom: '20px', marginTop: 0 }}>
+                      {new Date(analysisResult.generatedAt).toLocaleString()}
+                    </p>
+                    <div>
+                      {formatAnalysis(analysisResult.analysis)}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-
-            {/* Modal Content */}
-            <div style={{
-              padding: '24px',
-              overflow: 'auto',
-              flex: 1
-            }}>
-              {analyzing && (
-                <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                  <div style={{
-                    width: '48px',
-                    height: '48px',
-                    border: '2px solid #27272a',
-                    borderTopColor: '#00d46a',
-                    borderRadius: '50%',
-                    animation: 'spin 1s linear infinite',
-                    margin: '0 auto 20px'
-                  }} />
-                  <p style={{ color: '#fff', marginBottom: '8px' }}>Researching company...</p>
-                  <p style={{ color: '#71717a', fontSize: '13px' }}>Searching web, news, and social media</p>
-                  <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-                </div>
-              )}
-
-              {analysisError && (
-                <div style={{
-                  padding: '16px',
-                  backgroundColor: 'rgba(255,59,59,0.1)',
-                  border: '1px solid #ff3b3b',
-                  color: '#ff3b3b',
-                  borderRadius: '4px'
-                }}>
-                  {analysisError}
-                </div>
-              )}
-
-              {analysisResult && (
-                <div>
-                  <p style={{ color: '#71717a', fontSize: '11px', marginBottom: '24px' }}>
-                    Generated {new Date(analysisResult.generatedAt).toLocaleString()}
-                  </p>
-                  <div>
-                    {formatAnalysis(analysisResult.analysis)}
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
-        </div>
-      )}
-    </div>
+        )}
+      </div>
+    </>
   )
 }
