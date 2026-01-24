@@ -19,45 +19,50 @@ export async function POST(request) {
       return Response.json({ error: 'API key not configured' }, { status: 500 })
     }
 
-    const prompt = `You are a business intelligence analyst. Research and analyze the following company that has appeared in a UK Gazette insolvency notice.
+    const prompt = `You are a business intelligence analyst researching a company from a UK Gazette insolvency notice.
 
 Company: ${companyName}
 Notice Type: ${noticeType || 'Insolvency'}
 Notice Date: ${noticeDate || 'Recent'}
 
-Please use web search to gather comprehensive information about this company and provide:
+Search the web thoroughly and compile a detailed intelligence report. Focus on finding SPECIFIC, ACTIONABLE information.
 
-1. **Company Overview**
-   - What does/did the company do?
-   - Industry sector
-   - Company registration number (if found)
-   - Registered address
-   - Directors/officers (if available)
+IMPORTANT FORMATTING RULES:
+- Use plain text only, NO markdown symbols (no **, no ##, no *, no bullets like -)
+- Use ALL CAPS for section headers
+- Use line breaks to separate sections
+- Present lists with simple line breaks, not bullet points
 
-2. **Financial Background**
-   - Any available financial information
-   - Recent accounts or filings
-   - Signs of financial distress prior to insolvency
+Include these sections:
 
-3. **Recent News & Developments**
-   - Any news articles about the company
-   - Recent announcements or press releases
-   - Context around the insolvency
+COMPANY DETAILS
+Full registered company name, company registration number, date of incorporation, registered office address (full address with postcode), trading addresses if different.
 
-4. **Related Entities**
-   - Parent companies or subsidiaries
-   - Related businesses or directors
-   - Any group structure information
+KEY PEOPLE
+Names of all directors, officers, shareholders, and key personnel. Include their roles and any other companies they are associated with. List each person on a new line with their role.
 
-5. **Key Insights**
-   - Summary of the situation
-   - Potential reasons for insolvency
-   - Any notable observations
+CONTACT INFORMATION
+Any phone numbers, email addresses, website URLs, or social media profiles found for the company or key individuals.
 
-Format the response in clear sections with headers. Be factual and note when information could not be found.`
+BUSINESS OVERVIEW
+What the company does/did, industry sector, size, number of employees if known.
+
+FINANCIAL SUMMARY
+Latest available accounts, turnover, assets, liabilities, any CCJs or charges registered.
+
+NEWS AND HEADLINES
+Recent news articles, press coverage, social media mentions. Include publication names and dates. Search Twitter/X, LinkedIn, and news sites.
+
+ANALYSIS
+Why the insolvency likely occurred, timeline of events, any red flags or warning signs.
+
+RELATED ENTITIES
+Parent companies, subsidiaries, connected businesses, other companies with same directors.
+
+Be thorough and specific. Include actual names, addresses, and numbers wherever possible. State clearly if specific information could not be found.`
 
     const response = await client.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-haiku-4-20250514',
       max_tokens: 4096,
       messages: [
         {
