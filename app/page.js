@@ -96,15 +96,13 @@ export default function Home() {
               color: '#fff',
               fontSize: '11px',
               fontWeight: '600',
-              letterSpacing: '1px',
-              marginBottom: '8px',
-              textTransform: 'uppercase',
-              borderBottom: '1px solid #27272a',
-              paddingBottom: '8px'
+              letterSpacing: '1.5px',
+              marginBottom: '10px',
+              textTransform: 'uppercase'
             }}>
               {header}
             </h4>
-            <div style={{ color: '#a1a1aa', lineHeight: '1.7', fontSize: '13px' }}>
+            <div style={{ color: '#F4F4F4', lineHeight: '1.7', fontSize: '14px' }}>
               {content}
             </div>
           </div>
@@ -112,7 +110,7 @@ export default function Home() {
       }
 
       return (
-        <div key={i} style={{ marginBottom: '16px', color: '#a1a1aa', lineHeight: '1.7', fontSize: '13px' }}>
+        <div key={i} style={{ marginBottom: '16px', color: '#F4F4F4', lineHeight: '1.7', fontSize: '14px' }}>
           {section}
         </div>
       )
@@ -238,49 +236,50 @@ export default function Home() {
         color: '#fff',
         fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
       }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '32px 24px' }}>
-          <header style={{ marginBottom: '32px' }}>
+        <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '48px 24px' }}>
+          <header style={{ marginBottom: '40px' }}>
             <h1 style={{
               margin: 0,
-              fontSize: '13px',
+              fontSize: '14px',
               fontWeight: '500',
-              letterSpacing: '2px',
-              color: '#71717a',
+              letterSpacing: '3px',
+              color: '#fff',
               textTransform: 'uppercase'
             }}>
               GAZETTE FEED
             </h1>
-            <p style={{ margin: '8px 0 0', color: '#52525b', fontSize: '12px' }}>
+            <p style={{ margin: '10px 0 0', color: '#F4F4F4', fontSize: '14px' }}>
               UK insolvency notices
               {cacheInfo && (
-                <span>
+                <span style={{ color: '#F4F4F4' }}>
                   {' · '}
                   {cacheInfo.cached ? (
                     <>{Math.round(cacheInfo.cacheAge / 60)}m ago</>
                   ) : (
                     <>live</>
                   )}
-                  {cacheInfo.stale && <span style={{ color: '#a1a1aa' }}> (stale)</span>}
                 </span>
               )}
             </p>
           </header>
 
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '24px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', flexWrap: 'wrap', alignItems: 'center' }}>
             {FILTERS.map(filter => (
               <button
                 key={filter.id}
                 onClick={() => setActiveFilter(filter.id)}
                 style={{
-                  padding: '6px 12px',
+                  padding: '10px 18px',
                   backgroundColor: activeFilter === filter.id ? '#fff' : 'transparent',
-                  color: activeFilter === filter.id ? '#000' : '#52525b',
-                  border: `1px solid ${activeFilter === filter.id ? '#fff' : '#27272a'}`,
-                  borderRadius: '3px',
+                  color: activeFilter === filter.id ? '#000' : '#F4F4F4',
+                  border: `1px solid ${activeFilter === filter.id ? '#fff' : '#F4F4F4'}`,
+                  borderRadius: '4px',
                   cursor: 'pointer',
-                  fontSize: '11px',
+                  fontSize: '12px',
                   fontWeight: '500',
-                  transition: 'all 0.15s ease'
+                  transition: 'all 0.2s ease',
+                  textTransform: 'uppercase',
+                  letterSpacing: '1px'
                 }}
               >
                 {filter.label} ({counts[filter.id] || 0})
@@ -292,14 +291,16 @@ export default function Home() {
               disabled={loading}
               style={{
                 marginLeft: 'auto',
-                padding: '6px 12px',
+                padding: '10px 18px',
                 backgroundColor: 'transparent',
-                color: '#52525b',
-                border: '1px solid #27272a',
-                borderRadius: '3px',
+                color: '#F4F4F4',
+                border: '1px solid #F4F4F4',
+                borderRadius: '4px',
                 cursor: loading ? 'wait' : 'pointer',
-                fontSize: '11px',
-                fontWeight: '500'
+                fontSize: '12px',
+                fontWeight: '500',
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
               }}
             >
               {loading ? '...' : 'Refresh'}
@@ -308,13 +309,13 @@ export default function Home() {
 
           {error && (
             <div style={{
-              padding: '12px 16px',
-              backgroundColor: 'rgba(239,68,68,0.1)',
-              border: '1px solid #991b1b',
-              color: '#fca5a5',
-              borderRadius: '3px',
+              padding: '16px 20px',
+              backgroundColor: '#262626',
+              border: '1px solid #dc2626',
+              color: '#fff',
+              borderRadius: '4px',
               marginBottom: '24px',
-              fontSize: '12px'
+              fontSize: '14px'
             }}>
               {error}
             </div>
@@ -322,33 +323,35 @@ export default function Home() {
 
           <div>
             {filteredNotices.length === 0 && !loading && (
-              <p style={{ color: '#52525b', fontSize: '13px' }}>No notices found.</p>
+              <p style={{ color: '#F4F4F4', fontSize: '14px' }}>No notices found.</p>
             )}
 
             {filteredNotices.map((notice, i) => (
               <article
                 key={notice.id || i}
                 style={{
-                  padding: '14px 0',
-                  borderBottom: '1px solid #18181b',
+                  backgroundColor: '#262626',
+                  padding: '20px 24px',
+                  marginBottom: '12px',
+                  borderRadius: '4px',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'flex-start',
-                  gap: '16px'
+                  gap: '20px'
                 }}
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <span style={{
-                      fontSize: '10px',
-                      color: '#52525b',
+                      fontSize: '11px',
+                      color: '#F4F4F4',
                       textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
+                      letterSpacing: '1px'
                     }}>
                       {notice.noticeType || 'Notice'}
                     </span>
-                    <span style={{ color: '#27272a' }}>·</span>
-                    <span style={{ fontSize: '11px', color: '#3f3f46' }}>
+                    <span style={{ color: '#F4F4F4', opacity: 0.5 }}>|</span>
+                    <span style={{ fontSize: '12px', color: '#F4F4F4' }}>
                       {notice.published ? new Date(notice.published).toLocaleDateString('en-GB', {
                         day: 'numeric', month: 'short'
                       }) : ''}
@@ -359,14 +362,15 @@ export default function Home() {
                     target="_blank"
                     rel="noopener noreferrer"
                     style={{
-                      color: '#e4e4e7',
+                      color: '#fff',
                       textDecoration: 'none',
-                      fontSize: '14px',
+                      fontSize: '15px',
+                      fontWeight: '500',
                       lineHeight: '1.4',
                       display: 'block'
                     }}
-                    onMouseOver={(e) => e.target.style.color = '#fff'}
-                    onMouseOut={(e) => e.target.style.color = '#e4e4e7'}
+                    onMouseOver={(e) => e.target.style.opacity = '0.8'}
+                    onMouseOut={(e) => e.target.style.opacity = '1'}
                   >
                     {notice.title || 'Untitled Notice'}
                   </a>
@@ -375,21 +379,22 @@ export default function Home() {
                   onClick={() => analyzeCompany(notice)}
                   disabled={analyzing === notice.id}
                   style={{
-                    padding: '5px 10px',
+                    padding: '8px 16px',
                     backgroundColor: 'transparent',
-                    color: '#52525b',
-                    border: '1px solid #27272a',
-                    borderRadius: '3px',
+                    color: '#F4F4F4',
+                    border: '1px solid #F4F4F4',
+                    borderRadius: '4px',
                     cursor: analyzing === notice.id ? 'wait' : 'pointer',
-                    fontSize: '10px',
+                    fontSize: '11px',
                     fontWeight: '500',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.5px',
+                    letterSpacing: '1px',
                     whiteSpace: 'nowrap',
-                    flexShrink: 0
+                    flexShrink: 0,
+                    transition: 'all 0.2s ease'
                   }}
-                  onMouseOver={(e) => { if (analyzing !== notice.id) { e.target.style.borderColor = '#3f3f46'; e.target.style.color = '#a1a1aa' }}}
-                  onMouseOut={(e) => { e.target.style.borderColor = '#27272a'; e.target.style.color = '#52525b' }}
+                  onMouseOver={(e) => { if (analyzing !== notice.id) { e.target.style.backgroundColor = '#fff'; e.target.style.color = '#000' }}}
+                  onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#F4F4F4' }}
                 >
                   {analyzing === notice.id ? '...' : 'Analyze'}
                 </button>
@@ -403,7 +408,7 @@ export default function Home() {
           <div style={{
             position: 'fixed',
             inset: 0,
-            backgroundColor: 'rgba(0,0,0,0.9)',
+            backgroundColor: 'rgba(0,0,0,0.95)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -411,20 +416,19 @@ export default function Home() {
             padding: '20px'
           }}>
             <div style={{
-              backgroundColor: '#0a0a0a',
-              border: '1px solid #1f1f1f',
-              borderRadius: '4px',
-              maxWidth: '700px',
+              backgroundColor: '#262626',
+              borderRadius: '8px',
+              maxWidth: '800px',
               width: '100%',
-              maxHeight: '85vh',
+              maxHeight: '90vh',
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column'
             }}>
               {/* Modal Header */}
               <div style={{
-                padding: '16px 20px',
-                borderBottom: '1px solid #1f1f1f',
+                padding: '20px 24px',
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center'
@@ -432,19 +436,19 @@ export default function Home() {
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <p style={{
                     margin: 0,
-                    fontSize: '10px',
-                    color: '#52525b',
+                    fontSize: '11px',
+                    color: '#F4F4F4',
                     textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    marginBottom: '2px'
+                    letterSpacing: '1.5px',
+                    marginBottom: '4px'
                   }}>
-                    Report
+                    Intelligence Report
                   </p>
                   <h2 style={{
                     margin: 0,
-                    fontSize: '14px',
+                    fontSize: '16px',
                     fontWeight: '500',
-                    color: '#e4e4e7',
+                    color: '#fff',
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                     whiteSpace: 'nowrap'
@@ -452,39 +456,39 @@ export default function Home() {
                     {analyzing ? 'Analyzing...' : (analysisResult?.companyName || 'Company Analysis')}
                   </h2>
                 </div>
-                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                   {analysisResult && (
                     <button
                       onClick={downloadPDF}
                       style={{
-                        padding: '6px 12px',
+                        padding: '10px 18px',
                         backgroundColor: '#fff',
                         color: '#000',
                         border: 'none',
-                        borderRadius: '3px',
+                        borderRadius: '4px',
                         cursor: 'pointer',
-                        fontSize: '10px',
+                        fontSize: '11px',
                         fontWeight: '600',
                         textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
+                        letterSpacing: '1px'
                       }}
                     >
-                      PDF
+                      Download PDF
                     </button>
                   )}
                   <button
                     onClick={closeModal}
                     style={{
-                      padding: '6px 12px',
+                      padding: '10px 18px',
                       backgroundColor: 'transparent',
-                      color: '#52525b',
-                      border: '1px solid #27272a',
-                      borderRadius: '3px',
+                      color: '#F4F4F4',
+                      border: '1px solid #F4F4F4',
+                      borderRadius: '4px',
                       cursor: 'pointer',
-                      fontSize: '10px',
+                      fontSize: '11px',
                       fontWeight: '500',
                       textTransform: 'uppercase',
-                      letterSpacing: '0.5px'
+                      letterSpacing: '1px'
                     }}
                   >
                     Close
@@ -494,33 +498,34 @@ export default function Home() {
 
               {/* Modal Content */}
               <div style={{
-                padding: '20px',
+                padding: '24px',
                 overflow: 'auto',
                 flex: 1
               }}>
                 {analyzing && (
-                  <div style={{ textAlign: 'center', padding: '48px 20px' }}>
+                  <div style={{ textAlign: 'center', padding: '60px 20px' }}>
                     <div style={{
-                      width: '32px',
-                      height: '32px',
-                      border: '2px solid #27272a',
-                      borderTopColor: '#52525b',
+                      width: '40px',
+                      height: '40px',
+                      border: '2px solid rgba(255,255,255,0.2)',
+                      borderTopColor: '#fff',
                       borderRadius: '50%',
                       animation: 'spin 1s linear infinite',
-                      margin: '0 auto 16px'
+                      margin: '0 auto 20px'
                     }} />
-                    <p style={{ color: '#71717a', fontSize: '12px', margin: 0 }}>Searching...</p>
+                    <p style={{ color: '#fff', fontSize: '14px', margin: 0 }}>Researching company...</p>
+                    <p style={{ color: '#F4F4F4', fontSize: '13px', marginTop: '8px' }}>Searching web, news, and records</p>
                   </div>
                 )}
 
                 {analysisError && (
                   <div style={{
-                    padding: '12px 16px',
-                    backgroundColor: 'rgba(239,68,68,0.1)',
-                    border: '1px solid #991b1b',
-                    color: '#fca5a5',
-                    borderRadius: '3px',
-                    fontSize: '12px'
+                    padding: '16px 20px',
+                    backgroundColor: 'rgba(220,38,38,0.1)',
+                    border: '1px solid #dc2626',
+                    color: '#fff',
+                    borderRadius: '4px',
+                    fontSize: '14px'
                   }}>
                     {analysisError}
                   </div>
@@ -528,8 +533,8 @@ export default function Home() {
 
                 {analysisResult && (
                   <div>
-                    <p style={{ color: '#3f3f46', fontSize: '10px', marginBottom: '20px', marginTop: 0 }}>
-                      {new Date(analysisResult.generatedAt).toLocaleString()}
+                    <p style={{ color: '#F4F4F4', fontSize: '12px', marginBottom: '24px', marginTop: 0 }}>
+                      Generated {new Date(analysisResult.generatedAt).toLocaleString()}
                     </p>
                     <div>
                       {formatAnalysis(analysisResult.analysis)}
