@@ -78,40 +78,75 @@ export default function Home() {
   const formatAnalysis = (text) => {
     if (!text) return null
 
-    // Split by section headers (ALL CAPS lines)
-    const sections = text.split(/\n(?=[A-Z][A-Z\s]+\n)/)
+    // Split by horizontal rule first (separates CH data from web research)
+    const mainSections = text.split(/\n---\n/)
 
-    return sections.map((section, i) => {
-      const lines = section.trim().split('\n')
-      const header = lines[0]
-      const content = lines.slice(1).join('\n').trim()
-
-      // Check if first line is a header (ALL CAPS)
-      const isHeader = /^[A-Z][A-Z\s]+$/.test(header.trim())
-
-      if (isHeader && content) {
-        return (
-          <div key={i} style={{ marginBottom: '24px' }}>
-            <h4 style={{
-              color: '#fff',
-              fontSize: '11px',
-              fontWeight: '600',
-              letterSpacing: '1.5px',
-              marginBottom: '10px',
-              textTransform: 'uppercase'
-            }}>
-              {header}
-            </h4>
-            <div style={{ color: '#F4F4F4', lineHeight: '1.7', fontSize: '14px' }}>
-              {content}
-            </div>
-          </div>
-        )
-      }
+    return mainSections.map((mainSection, mainIdx) => {
+      // Split by section headers (ALL CAPS lines)
+      const sections = mainSection.split(/\n(?=[A-Z][A-Z\s\(\)&]+\n)/)
 
       return (
-        <div key={i} style={{ marginBottom: '16px', color: '#F4F4F4', lineHeight: '1.7', fontSize: '14px' }}>
-          {section}
+        <div key={mainIdx}>
+          {mainIdx > 0 && (
+            <div style={{
+              borderTop: '1px solid rgba(255,255,255,0.1)',
+              margin: '32px 0',
+              paddingTop: '24px'
+            }} />
+          )}
+          {sections.map((section, i) => {
+            const lines = section.trim().split('\n')
+            const header = lines[0]
+            const content = lines.slice(1).join('\n').trim()
+
+            // Check if first line is a header (ALL CAPS)
+            const isHeader = /^[A-Z][A-Z\s\(\)&]+$/.test(header.trim())
+
+            // Special styling for main section headers
+            const isMainHeader = header.includes('COMPANIES HOUSE') || header.includes('WEB RESEARCH')
+
+            if (isHeader && content) {
+              return (
+                <div key={i} style={{ marginBottom: '24px' }}>
+                  <h4 style={{
+                    color: isMainHeader ? '#fff' : '#F4F4F4',
+                    fontSize: isMainHeader ? '12px' : '11px',
+                    fontWeight: '600',
+                    letterSpacing: '1.5px',
+                    marginBottom: isMainHeader ? '16px' : '10px',
+                    textTransform: 'uppercase',
+                    paddingBottom: isMainHeader ? '8px' : '0',
+                    borderBottom: isMainHeader ? '1px solid rgba(255,255,255,0.2)' : 'none'
+                  }}>
+                    {header}
+                  </h4>
+                  <div style={{
+                    color: '#F4F4F4',
+                    lineHeight: '1.7',
+                    fontSize: '14px',
+                    whiteSpace: 'pre-wrap'
+                  }}>
+                    {content}
+                  </div>
+                </div>
+              )
+            }
+
+            if (section.trim()) {
+              return (
+                <div key={i} style={{
+                  marginBottom: '16px',
+                  color: '#F4F4F4',
+                  lineHeight: '1.7',
+                  fontSize: '14px',
+                  whiteSpace: 'pre-wrap'
+                }}>
+                  {section}
+                </div>
+              )
+            }
+            return null
+          })}
         </div>
       )
     })
@@ -434,16 +469,30 @@ export default function Home() {
                 alignItems: 'center'
               }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <p style={{
-                    margin: 0,
-                    fontSize: '11px',
-                    color: '#F4F4F4',
-                    textTransform: 'uppercase',
-                    letterSpacing: '1.5px',
-                    marginBottom: '4px'
-                  }}>
-                    Intelligence Report
-                  </p>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '4px' }}>
+                    <p style={{
+                      margin: 0,
+                      fontSize: '11px',
+                      color: '#F4F4F4',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1.5px'
+                    }}>
+                      Intelligence Report
+                    </p>
+                    {analysisResult?.sources?.companiesHouse && (
+                      <span style={{
+                        fontSize: '10px',
+                        color: '#000',
+                        backgroundColor: '#fff',
+                        padding: '2px 8px',
+                        borderRadius: '3px',
+                        fontWeight: '600',
+                        letterSpacing: '0.5px'
+                      }}>
+                        VERIFIED
+                      </span>
+                    )}
+                  </div>
                   <h2 style={{
                     margin: 0,
                     fontSize: '16px',
@@ -455,6 +504,26 @@ export default function Home() {
                   }}>
                     {analyzing ? 'Analyzing...' : (analysisResult?.companyName || 'Company Analysis')}
                   </h2>
+                  {analysisResult?.companyNumber && (
+                    <p style={{
+                      margin: '4px 0 0',
+                      fontSize: '12px',
+                      color: '#F4F4F4',
+                      fontFamily: 'SF Mono, Roboto Mono, monospace'
+                    }}>
+                      Company #{analysisResult.companyNumber}
+                      {analysisResult.companyStatus && (
+                        <span style={{
+                          marginLeft: '12px',
+                          textTransform: 'uppercase',
+                          color: analysisResult.companyStatus === 'active' ? '#4ade80' :
+                                 analysisResult.companyStatus === 'liquidation' ? '#fbbf24' : '#F4F4F4'
+                        }}>
+                          {analysisResult.companyStatus}
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
                 <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
                   {analysisResult && (
@@ -513,8 +582,10 @@ export default function Home() {
                       animation: 'spin 1s linear infinite',
                       margin: '0 auto 20px'
                     }} />
-                    <p style={{ color: '#fff', fontSize: '14px', margin: 0 }}>Researching company...</p>
-                    <p style={{ color: '#F4F4F4', fontSize: '13px', marginTop: '8px' }}>Searching web, news, and records</p>
+                    <p style={{ color: '#fff', fontSize: '14px', margin: 0 }}>Building intelligence report...</p>
+                    <p style={{ color: '#F4F4F4', fontSize: '13px', marginTop: '8px' }}>
+                      Querying Companies House, searching web and news
+                    </p>
                   </div>
                 )}
 
