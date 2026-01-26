@@ -78,7 +78,8 @@ export default function Home() {
         body: JSON.stringify({
           companyName: notice.title,
           noticeType: notice.noticeType,
-          noticeDate: notice.published
+          noticeDate: notice.published,
+          noticeLink: notice.link
         })
       })
 

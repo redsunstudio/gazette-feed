@@ -114,12 +114,88 @@ function getSICDescription(code) {
   return SIC_CODES[code] || `SIC ${code}`
 }
 
+// Fetch and parse Gazette notice for IP details
+async function fetchGazetteNotice(noticeUrl) {
+  try {
+    const response = await fetch(noticeUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; GazetteFeed/1.0)'
+      }
+    })
+
+    if (!response.ok) return null
+
+    const html = await response.text()
+
+    // Extract IP/Liquidator details
+    const ipDetails = {}
+
+    // Look for IP name with number pattern: "Name (IP No. XXXXX)"
+    const ipNameMatch = html.match(/([A-Z][a-zA-Z\s\.\-']+)\s*\(IP\s*No\.?\s*(\d+)\)/i)
+    if (ipNameMatch) {
+      ipDetails.name = ipNameMatch[1].trim()
+      ipDetails.ipNumber = ipNameMatch[2]
+    }
+
+    // Look for firm name - usually after "of" before address
+    const firmMatch = html.match(/(?:IP No\.?\s*\d+\))\s*(?:of\s+)?([A-Z][A-Za-z\s&\-']+(?:LLP|Limited|Ltd|Practitioners?|Partners?|Associates?|Services?|Solutions?|Group)?)/i)
+    if (firmMatch) {
+      ipDetails.firm = firmMatch[1].trim()
+    }
+
+    // Alternative: Look for "Liquidator" or "Administrator" section
+    const liquidatorSectionMatch = html.match(/(?:Name and address of (?:nominated )?(?:Liquidator|Joint Liquidators?|Administrator|Joint Administrators?|Supervisor))[:\s]*([^<]+)/i)
+    if (liquidatorSectionMatch && !ipDetails.name) {
+      const section = liquidatorSectionMatch[1].trim()
+      // Try to parse name from section
+      const nameFromSection = section.match(/^([A-Z][a-zA-Z\s\.\-']+?)(?:,|\s+of\s+|\s+\()/i)
+      if (nameFromSection) {
+        ipDetails.name = nameFromSection[1].trim()
+      }
+    }
+
+    // Look for phone number
+    const phoneMatch = html.match(/(?:Tel(?:ephone)?|Phone|Contact)[:\s]*([0-9\s\-\(\)]{10,})/i)
+    if (phoneMatch) {
+      ipDetails.phone = phoneMatch[1].trim()
+    }
+
+    // Look for email
+    const emailMatch = html.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i)
+    if (emailMatch) {
+      ipDetails.email = emailMatch[1]
+    }
+
+    // Look for address - typically after firm name, contains postcode
+    const addressMatch = html.match(/(\d+[A-Za-z]?\s+[A-Za-z\s,]+[A-Z]{1,2}\d{1,2}\s?\d[A-Z]{2})/i)
+    if (addressMatch) {
+      ipDetails.address = addressMatch[1].trim()
+    }
+
+    // Check if we found anything useful
+    if (Object.keys(ipDetails).length > 0) {
+      return ipDetails
+    }
+
+    return null
+  } catch (error) {
+    console.error('Error fetching Gazette notice:', error)
+    return null
+  }
+}
+
 export async function POST(request) {
   try {
-    const { companyName, noticeType, noticeDate } = await request.json()
+    const { companyName, noticeType, noticeDate, noticeLink } = await request.json()
 
     if (!companyName) {
       return Response.json({ error: 'Company name is required' }, { status: 400 })
+    }
+
+    // Step 0: Fetch IP details from Gazette notice
+    let ipDetails = null
+    if (noticeLink) {
+      ipDetails = await fetchGazetteNotice(noticeLink)
     }
 
     // Step 1: Search Companies House
@@ -210,6 +286,30 @@ export async function POST(request) {
       }
 
       companiesHouseInfo = `COMPANIES HOUSE VERIFIED DATA\n\n${sections.join('\n\n')}`
+    }
+
+    // Add IP/Liquidator details if found
+    if (ipDetails) {
+      const ipSection = []
+      if (ipDetails.name) {
+        ipSection.push(`Name: ${ipDetails.name}${ipDetails.ipNumber ? ` (IP No. ${ipDetails.ipNumber})` : ''}`)
+      }
+      if (ipDetails.firm) {
+        ipSection.push(`Firm: ${ipDetails.firm}`)
+      }
+      if (ipDetails.address) {
+        ipSection.push(`Address: ${ipDetails.address}`)
+      }
+      if (ipDetails.phone) {
+        ipSection.push(`Phone: ${ipDetails.phone}`)
+      }
+      if (ipDetails.email) {
+        ipSection.push(`Email: ${ipDetails.email}`)
+      }
+
+      if (ipSection.length > 0) {
+        companiesHouseInfo += `\n\nAPPOINTED INSOLVENCY PRACTITIONER\n${ipSection.join('\n')}`
+      }
     }
 
     // Step 3: Use Claude with web search for additional intelligence
