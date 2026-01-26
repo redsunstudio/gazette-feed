@@ -221,6 +221,7 @@ export async function POST(request) {
 
 Company Name: ${companyName}
 ${companyData ? `Company Number: ${companyData.company_number}` : ''}
+${companyData?.registered_office_address ? `Registered Address: ${formatAddress(companyData.registered_office_address)}` : ''}
 Notice Type: ${noticeType || 'Insolvency'}
 Notice Date: ${noticeDate || 'Recent'}
 
@@ -229,7 +230,11 @@ Search the web and compile findings. IMPORTANT: Only include sections where you 
 SECTIONS TO RESEARCH (only include if found):
 
 WEBSITE
-The official company website URL if it exists.
+Search for the company website using multiple approaches:
+1. Search the company number (e.g. "07123456 website")
+2. Search the company address or postcode
+3. Search the company name
+Try all three methods to find the official website URL.
 
 SOCIAL MEDIA
 LinkedIn, Twitter/X, Facebook, or Instagram accounts. Include URLs and follower counts if visible.
