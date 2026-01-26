@@ -21,6 +21,10 @@ export default function Home() {
   const [analysisError, setAnalysisError] = useState(null)
   const [showModal, setShowModal] = useState(false)
 
+  // Financials state - keyed by notice id
+  const [financials, setFinancials] = useState({})
+  const [loadingFinancials, setLoadingFinancials] = useState({})
+
   const fetchNotices = async (forceRefresh = false) => {
     try {
       setLoading(true)
@@ -41,6 +45,23 @@ export default function Home() {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadFinancials = async (notice) => {
+    const id = notice.id
+    if (financials[id] || loadingFinancials[id]) return
+
+    setLoadingFinancials(prev => ({ ...prev, [id]: true }))
+
+    try {
+      const res = await fetch(`/api/financials?company=${encodeURIComponent(notice.title)}`)
+      const data = await res.json()
+      setFinancials(prev => ({ ...prev, [id]: data }))
+    } catch (err) {
+      setFinancials(prev => ({ ...prev, [id]: { error: err.message } }))
+    } finally {
+      setLoadingFinancials(prev => ({ ...prev, [id]: false }))
     }
   }
 
@@ -395,80 +416,176 @@ export default function Home() {
               <p style={{ color: '#F4F4F4', fontSize: '14px' }}>No notices found.</p>
             )}
 
-            {filteredNotices.map((notice, i) => (
-              <article
-                key={notice.id || i}
-                style={{
-                  backgroundColor: '#262626',
-                  padding: '20px 24px',
-                  marginBottom: '12px',
-                  borderRadius: '4px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  gap: '20px'
-                }}
-              >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{
-                      fontSize: '11px',
-                      color: '#F4F4F4',
-                      textTransform: 'uppercase',
-                      letterSpacing: '1px'
-                    }}>
-                      {notice.noticeType || 'Notice'}
-                    </span>
-                    <span style={{ color: '#F4F4F4', opacity: 0.5 }}>|</span>
-                    <span style={{ fontSize: '12px', color: '#F4F4F4' }}>
-                      {notice.published ? new Date(notice.published).toLocaleDateString('en-GB', {
-                        day: 'numeric', month: 'short'
-                      }) : ''}
-                    </span>
-                  </div>
-                  <a
-                    href={notice.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={{
-                      color: '#fff',
-                      textDecoration: 'none',
-                      fontSize: '15px',
-                      fontWeight: '500',
-                      lineHeight: '1.4',
-                      display: 'block'
-                    }}
-                    onMouseOver={(e) => e.target.style.opacity = '0.8'}
-                    onMouseOut={(e) => e.target.style.opacity = '1'}
-                  >
-                    {notice.title || 'Untitled Notice'}
-                  </a>
-                </div>
-                <button
-                  onClick={() => analyzeCompany(notice)}
-                  disabled={analyzing === notice.id}
+            {filteredNotices.map((notice, i) => {
+              const fin = financials[notice.id]
+              const finLoading = loadingFinancials[notice.id]
+
+              return (
+                <article
+                  key={notice.id || i}
                   style={{
-                    padding: '8px 16px',
-                    backgroundColor: 'transparent',
-                    color: '#F4F4F4',
-                    border: '1px solid #F4F4F4',
-                    borderRadius: '4px',
-                    cursor: analyzing === notice.id ? 'wait' : 'pointer',
-                    fontSize: '11px',
-                    fontWeight: '500',
-                    textTransform: 'uppercase',
-                    letterSpacing: '1px',
-                    whiteSpace: 'nowrap',
-                    flexShrink: 0,
-                    transition: 'all 0.2s ease'
+                    backgroundColor: '#262626',
+                    padding: '20px 24px',
+                    marginBottom: '12px',
+                    borderRadius: '4px'
                   }}
-                  onMouseOver={(e) => { if (analyzing !== notice.id) { e.target.style.backgroundColor = '#fff'; e.target.style.color = '#000' }}}
-                  onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#F4F4F4' }}
                 >
-                  {analyzing === notice.id ? '...' : 'Analyze'}
-                </button>
-              </article>
-            ))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '20px' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                        <span style={{
+                          fontSize: '11px',
+                          color: '#F4F4F4',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px'
+                        }}>
+                          {notice.noticeType || 'Notice'}
+                        </span>
+                        <span style={{ color: '#F4F4F4', opacity: 0.5 }}>|</span>
+                        <span style={{ fontSize: '12px', color: '#F4F4F4' }}>
+                          {notice.published ? new Date(notice.published).toLocaleDateString('en-GB', {
+                            day: 'numeric', month: 'short'
+                          }) : ''}
+                        </span>
+                        {fin?.financials?.netAssetsFormatted && (
+                          <>
+                            <span style={{ color: '#F4F4F4', opacity: 0.5 }}>|</span>
+                            <span style={{
+                              fontSize: '12px',
+                              color: fin.financials.netAssets < 0 ? '#ef4444' : '#4ade80',
+                              fontFamily: 'SF Mono, Roboto Mono, monospace'
+                            }}>
+                              {fin.financials.netAssetsFormatted}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <a
+                        href={notice.link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: '#fff',
+                          textDecoration: 'none',
+                          fontSize: '15px',
+                          fontWeight: '500',
+                          lineHeight: '1.4',
+                          display: 'block'
+                        }}
+                        onMouseOver={(e) => e.target.style.opacity = '0.8'}
+                        onMouseOut={(e) => e.target.style.opacity = '1'}
+                      >
+                        {notice.title || 'Untitled Notice'}
+                      </a>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                      {!fin && (
+                        <button
+                          onClick={() => loadFinancials(notice)}
+                          disabled={finLoading}
+                          title="Load financial data"
+                          style={{
+                            padding: '8px 12px',
+                            backgroundColor: 'transparent',
+                            color: '#F4F4F4',
+                            border: '1px solid #F4F4F4',
+                            borderRadius: '4px',
+                            cursor: finLoading ? 'wait' : 'pointer',
+                            fontSize: '12px',
+                            fontWeight: '500',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseOver={(e) => { if (!finLoading) { e.target.style.backgroundColor = '#fff'; e.target.style.color = '#000' }}}
+                          onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#F4F4F4' }}
+                        >
+                          {finLoading ? '...' : '£'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => analyzeCompany(notice)}
+                        disabled={analyzing === notice.id}
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: 'transparent',
+                          color: '#F4F4F4',
+                          border: '1px solid #F4F4F4',
+                          borderRadius: '4px',
+                          cursor: analyzing === notice.id ? 'wait' : 'pointer',
+                          fontSize: '11px',
+                          fontWeight: '500',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseOver={(e) => { if (analyzing !== notice.id) { e.target.style.backgroundColor = '#fff'; e.target.style.color = '#000' }}}
+                        onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#F4F4F4' }}
+                      >
+                        {analyzing === notice.id ? '...' : 'Analyze'}
+                      </button>
+                    </div>
+                  </div>
+                  {fin && fin.financials && (
+                    <div style={{
+                      marginTop: '12px',
+                      paddingTop: '12px',
+                      borderTop: '1px solid rgba(255,255,255,0.1)',
+                      display: 'flex',
+                      gap: '24px',
+                      flexWrap: 'wrap',
+                      fontSize: '12px'
+                    }}>
+                      {fin.financials.totalAssetsFormatted && (
+                        <div>
+                          <span style={{ color: '#F4F4F4', opacity: 0.7 }}>Total Assets: </span>
+                          <span style={{ color: '#fff', fontFamily: 'SF Mono, Roboto Mono, monospace' }}>
+                            {fin.financials.totalAssetsFormatted}
+                          </span>
+                        </div>
+                      )}
+                      {fin.financials.netAssetsFormatted && (
+                        <div>
+                          <span style={{ color: '#F4F4F4', opacity: 0.7 }}>Net Assets: </span>
+                          <span style={{
+                            color: fin.financials.netAssets < 0 ? '#ef4444' : '#4ade80',
+                            fontFamily: 'SF Mono, Roboto Mono, monospace'
+                          }}>
+                            {fin.financials.netAssetsFormatted}
+                          </span>
+                        </div>
+                      )}
+                      {fin.financials.liabilitiesFormatted && (
+                        <div>
+                          <span style={{ color: '#F4F4F4', opacity: 0.7 }}>Liabilities: </span>
+                          <span style={{ color: '#ef4444', fontFamily: 'SF Mono, Roboto Mono, monospace' }}>
+                            {fin.financials.liabilitiesFormatted}
+                          </span>
+                        </div>
+                      )}
+                      {fin.accountsDate && (
+                        <div style={{ marginLeft: 'auto' }}>
+                          <span style={{ color: '#F4F4F4', opacity: 0.5 }}>
+                            as of {new Date(fin.accountsDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {fin && !fin.financials && fin.message && (
+                    <div style={{
+                      marginTop: '12px',
+                      paddingTop: '12px',
+                      borderTop: '1px solid rgba(255,255,255,0.1)',
+                      fontSize: '12px',
+                      color: '#F4F4F4',
+                      opacity: 0.6
+                    }}>
+                      {fin.message}
+                    </div>
+                  )}
+                </article>
+              )
+            })}
           </div>
         </div>
 
