@@ -159,51 +159,83 @@ export default function Home() {
 
     const doc = new jsPDF()
     const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
     const margin = 20
     const maxWidth = pageWidth - margin * 2
 
-    // Header
+    // Header bar
     doc.setFillColor(0, 0, 0)
-    doc.rect(0, 0, pageWidth, 45, 'F')
+    doc.rect(0, 0, pageWidth, 50, 'F')
 
+    // Brand name
     doc.setTextColor(255, 255, 255)
-    doc.setFontSize(20)
-    doc.setFont('helvetica', 'bold')
-    doc.text('INTELLIGENCE REPORT', margin, 25)
-
-    doc.setFontSize(12)
-    doc.setFont('helvetica', 'normal')
-    doc.text(analysisResult.companyName || 'Company Analysis', margin, 35)
-
-    // Date
-    doc.setTextColor(150, 150, 150)
-    doc.setFontSize(9)
-    doc.text(`Generated: ${new Date(analysisResult.generatedAt).toLocaleString()}`, margin, 55)
-
-    // Content
-    doc.setTextColor(0, 0, 0)
     doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text('GAZETTE INTELLIGENCE', margin, 18)
 
-    const lines = doc.splitTextToSize(analysisResult.analysis, maxWidth)
-    let y = 65
+    // Company name
+    doc.setFontSize(18)
+    doc.setFont('helvetica', 'bold')
+    const companyName = analysisResult.companyName || 'Company Report'
+    doc.text(companyName.toUpperCase(), margin, 32)
+
+    // Company number and status
+    if (analysisResult.companyNumber) {
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(200, 200, 200)
+      let subline = `#${analysisResult.companyNumber}`
+      if (analysisResult.companyStatus) {
+        subline += `  |  ${analysisResult.companyStatus.toUpperCase()}`
+      }
+      doc.text(subline, margin, 43)
+    }
+
+    // Date line below header
+    doc.setTextColor(120, 120, 120)
+    doc.setFontSize(9)
+    doc.text(`Report generated ${new Date(analysisResult.generatedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`, margin, 60)
+
+    // Process content - clean up the analysis text
+    let content = analysisResult.analysis || ''
+
+    // Remove any "---" dividers
+    content = content.replace(/\n---\n/g, '\n\n')
+
+    // Remove "WEB RESEARCH" header if it's standalone
+    content = content.replace(/\nWEB RESEARCH\n\n/g, '\n\n')
+
+    const lines = doc.splitTextToSize(content.trim(), maxWidth)
+    let y = 72
     const lineHeight = 5
-    const pageHeight = doc.internal.pageSize.getHeight()
 
     for (const line of lines) {
-      if (y > pageHeight - 20) {
+      if (y > pageHeight - 25) {
         doc.addPage()
-        y = 20
+        // Mini header on subsequent pages
+        doc.setFillColor(0, 0, 0)
+        doc.rect(0, 0, pageWidth, 15, 'F')
+        doc.setTextColor(255, 255, 255)
+        doc.setFontSize(8)
+        doc.setFont('helvetica', 'normal')
+        doc.text('GAZETTE INTELLIGENCE', margin, 10)
+        doc.setTextColor(150, 150, 150)
+        doc.text(companyName, pageWidth - margin - doc.getTextWidth(companyName), 10)
+        y = 28
       }
 
-      // Check for section headers (ALL CAPS)
-      if (/^[A-Z][A-Z\s]+$/.test(line.trim())) {
-        y += 5
+      // Section headers (ALL CAPS lines)
+      if (/^[A-Z][A-Z\s\(\)&]+$/.test(line.trim()) && line.trim().length > 3) {
+        y += 6
         doc.setFont('helvetica', 'bold')
-        doc.setTextColor(60, 60, 60)
+        doc.setFontSize(11)
+        doc.setTextColor(0, 0, 0)
         doc.text(line, margin, y)
         doc.setFont('helvetica', 'normal')
-        doc.setTextColor(0, 0, 0)
-      } else {
+        doc.setFontSize(10)
+        y += 2
+      } else if (line.trim()) {
+        doc.setTextColor(40, 40, 40)
         doc.text(line, margin, y)
       }
       y += lineHeight
@@ -213,13 +245,15 @@ export default function Home() {
     const totalPages = doc.internal.getNumberOfPages()
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i)
+      doc.setDrawColor(220, 220, 220)
+      doc.line(margin, pageHeight - 18, pageWidth - margin, pageHeight - 18)
       doc.setFontSize(8)
       doc.setTextColor(150, 150, 150)
-      doc.text('Gazette Intelligence Report', margin, pageHeight - 10)
-      doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 20, pageHeight - 10)
+      doc.text('gazette-feed.railway.app', margin, pageHeight - 10)
+      doc.text(`${i} / ${totalPages}`, pageWidth - margin - 10, pageHeight - 10)
     }
 
-    const fileName = `${analysisResult.companyName?.replace(/[^a-zA-Z0-9]/g, '_') || 'analysis'}_report.pdf`
+    const fileName = `${companyName.replace(/[^a-zA-Z0-9]/g, '_')}_Intelligence_Report.pdf`
     doc.save(fileName)
   }
 

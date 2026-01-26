@@ -156,46 +156,60 @@ export async function POST(request) {
     let companiesHouseInfo = ''
 
     if (companyData) {
-      companiesHouseInfo = `
-COMPANIES HOUSE VERIFIED DATA
+      const sections = []
 
-COMPANY DETAILS
-Company Name: ${companyData.company_name}
-Company Number: ${companyData.company_number}
-Status: ${companyData.company_status?.toUpperCase() || 'Unknown'}
-Type: ${companyData.type || 'Unknown'}
-Incorporated: ${formatDate(companyData.date_of_creation)}
-${companyData.date_of_cessation ? `Dissolved: ${formatDate(companyData.date_of_cessation)}` : ''}
+      // Company details - always include if we have data
+      const details = [
+        `Company Name: ${companyData.company_name}`,
+        `Company Number: ${companyData.company_number}`,
+        `Status: ${companyData.company_status?.toUpperCase() || 'Unknown'}`,
+        companyData.type ? `Type: ${companyData.type}` : null,
+        `Incorporated: ${formatDate(companyData.date_of_creation)}`,
+        companyData.date_of_cessation ? `Dissolved: ${formatDate(companyData.date_of_cessation)}` : null
+      ].filter(Boolean)
 
-REGISTERED ADDRESS
-${formatAddress(companyData.registered_office_address)}
+      sections.push(`COMPANY DETAILS\n${details.join('\n')}`)
 
-${companyData.sic_codes?.length ? `INDUSTRY CODES\n${companyData.sic_codes.map(code => `${code}: ${getSICDescription(code)}`).join('\n')}` : ''}
+      // Address
+      const address = formatAddress(companyData.registered_office_address)
+      if (address && address !== 'Not available') {
+        sections.push(`REGISTERED ADDRESS\n${address}`)
+      }
 
-OFFICERS (DIRECTORS & SECRETARIES)
-${officers.length ? officers.map(o => {
-  const role = o.officer_role?.replace(/_/g, ' ').toUpperCase() || 'OFFICER'
-  const name = o.name
-  const appointed = o.appointed_on ? `Appointed: ${formatDate(o.appointed_on)}` : ''
-  const resigned = o.resigned_on ? `Resigned: ${formatDate(o.resigned_on)}` : 'Current'
-  const occupation = o.occupation ? `Occupation: ${o.occupation}` : ''
-  return `${name}\n  Role: ${role}\n  ${appointed} | ${resigned}${occupation ? `\n  ${occupation}` : ''}`
-}).join('\n\n') : 'No officers found'}
+      // SIC codes
+      if (companyData.sic_codes?.length) {
+        sections.push(`INDUSTRY CODES\n${companyData.sic_codes.map(code => `${code}: ${getSICDescription(code)}`).join('\n')}`)
+      }
 
-PERSONS WITH SIGNIFICANT CONTROL (SHAREHOLDERS/CONTROLLERS)
-${pscs.length ? pscs.map(p => {
-  const name = p.name || p.name_elements?.forename + ' ' + p.name_elements?.surname || 'Unknown'
-  const nature = p.natures_of_control?.join(', ') || 'Control details not specified'
-  const notified = p.notified_on ? `Notified: ${formatDate(p.notified_on)}` : ''
-  return `${name}\n  ${nature}\n  ${notified}`
-}).join('\n\n') : 'No PSCs found or company exempt'}
-`
-    } else if (chError) {
-      companiesHouseInfo = `\nCOMPANIES HOUSE: Unable to fetch data - ${chError}\n`
-    } else if (!CH_API_KEY) {
-      companiesHouseInfo = `\nCOMPANIES HOUSE: API key not configured\n`
-    } else {
-      companiesHouseInfo = `\nCOMPANIES HOUSE: No matching company found for "${companyName}"\n`
+      // Officers - only if we have them
+      if (officers.length) {
+        const officerList = officers.map(o => {
+          const role = o.officer_role?.replace(/_/g, ' ').toUpperCase() || 'OFFICER'
+          const name = o.name
+          const appointed = o.appointed_on ? `Appointed: ${formatDate(o.appointed_on)}` : ''
+          const resigned = o.resigned_on ? `Resigned: ${formatDate(o.resigned_on)}` : 'Current'
+          const occupation = o.occupation ? `Occupation: ${o.occupation}` : ''
+          return `${name}\n  Role: ${role}\n  ${appointed} | ${resigned}${occupation ? `\n  ${occupation}` : ''}`
+        }).join('\n\n')
+        sections.push(`OFFICERS\n${officerList}`)
+      }
+
+      // PSCs - only if we have them
+      if (pscs.length) {
+        const pscList = pscs.map(p => {
+          const name = p.name || (p.name_elements ? `${p.name_elements.forename} ${p.name_elements.surname}` : null)
+          if (!name) return null
+          const nature = p.natures_of_control?.join(', ')
+          const notified = p.notified_on ? `Notified: ${formatDate(p.notified_on)}` : ''
+          return `${name}${nature ? `\n  ${nature}` : ''}${notified ? `\n  ${notified}` : ''}`
+        }).filter(Boolean).join('\n\n')
+
+        if (pscList) {
+          sections.push(`PERSONS WITH SIGNIFICANT CONTROL\n${pscList}`)
+        }
+      }
+
+      companiesHouseInfo = `COMPANIES HOUSE VERIFIED DATA\n\n${sections.join('\n\n')}`
     }
 
     // Step 3: Use Claude with web search for additional intelligence
@@ -203,46 +217,43 @@ ${pscs.length ? pscs.map(p => {
       return Response.json({ error: 'Anthropic API key not configured' }, { status: 500 })
     }
 
-    const webSearchPrompt = `You are a business intelligence analyst. I need you to search the web for additional information about this UK company.
+    const webSearchPrompt = `You are a business intelligence analyst researching a UK company facing insolvency.
 
 Company Name: ${companyName}
 ${companyData ? `Company Number: ${companyData.company_number}` : ''}
 Notice Type: ${noticeType || 'Insolvency'}
 Notice Date: ${noticeDate || 'Recent'}
 
-I already have Companies House data. Now search the web to find:
+Search the web and compile findings. IMPORTANT: Only include sections where you find actual information. Do NOT include any section if you cannot find relevant data for it.
 
-1. COMPANY WEBSITE
-Find the official company website URL if it exists. Check if it's still active.
+SECTIONS TO RESEARCH (only include if found):
 
-2. SOCIAL MEDIA ACCOUNTS
-Search for the company on:
-- LinkedIn (company page)
-- Twitter/X
-- Facebook
-- Instagram
-Look for official accounts and note follower counts if visible.
+WEBSITE
+The official company website URL if it exists.
 
-3. RECENT NEWS (Last 30 Days)
-Search for any news articles, press releases, or media coverage about this company from the past month. Include:
-- Publication name
-- Headline
-- Date
-- Brief summary
+SOCIAL MEDIA
+LinkedIn, Twitter/X, Facebook, or Instagram accounts. Include URLs and follower counts if visible.
 
-4. BUSINESS ANALYSIS
-Based on what you find:
-- What does/did this company actually do?
-- Any visible signs of trouble before insolvency?
-- Customer reviews or complaints?
-- Any connected companies or group structure?
+RECENT NEWS
+News articles or press coverage from the past month. Include publication, headline, date, and brief summary.
 
-FORMATTING RULES:
-- Use plain text only, NO markdown (no **, no ##, no bullets like -)
+BUSINESS OVERVIEW
+What the company does/did, their products or services, and any notable information about their operations.
+
+WARNING SIGNS
+Any visible signs of trouble before insolvency - customer complaints, reviews, legal issues, or red flags.
+
+CONNECTED ENTITIES
+Parent companies, subsidiaries, or related businesses.
+
+CRITICAL FORMATTING RULES:
+- ONLY include sections where you found actual information
+- Do NOT write "not found", "no results", "could not find", or similar phrases
+- Do NOT include empty sections
+- Use plain text only, NO markdown (no **, no ##, no -)
 - Use ALL CAPS for section headers
 - Use line breaks to separate items
-- Be specific with URLs and dates
-- State clearly if you cannot find something`
+- Be specific with URLs and dates`
 
     const response = await anthropic.messages.create({
       model: 'claude-3-5-haiku-20241022',
