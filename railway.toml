@@ -1,3 +1,5 @@
 [deploy]
 # Enable sleep mode - app sleeps after 10 minutes of inactivity
 sleepApplication = true
+
+# Updated: 2026-02-11 - Added analytics dashboard integration
