@@ -25,6 +25,13 @@ export default function Home() {
   const [financials, setFinancials] = useState({})
   const [loadingFinancials, setLoadingFinancials] = useState({})
 
+  // Blog drafting state
+  const [draftingBlog, setDraftingBlog] = useState(null)
+  const [blogDraft, setBlogDraft] = useState(null)
+  const [showBlogModal, setShowBlogModal] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [editedContent, setEditedContent] = useState('')
+
   const fetchNotices = async (forceRefresh = false) => {
     try {
       setLoading(true)
@@ -285,6 +292,99 @@ export default function Home() {
     setAnalysisError(null)
   }
 
+  const draftBlogPost = async (notice) => {
+    setDraftingBlog(notice.id)
+    try {
+      const res = await fetch('/api/draft-blog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: notice.title,
+          noticeType: notice.noticeType,
+          noticeDate: notice.published,
+          noticeLink: notice.link
+        })
+      })
+
+      const data = await res.json()
+
+      if (data.error) throw new Error(data.error)
+
+      setBlogDraft(data)
+      setEditedContent(data.blog)
+      setShowBlogModal(true)
+    } catch (err) {
+      alert(`Failed to draft blog: ${err.message}`)
+    } finally {
+      setDraftingBlog(null)
+    }
+  }
+
+  const closeBlogModal = () => {
+    setShowBlogModal(false)
+    setBlogDraft(null)
+    setEditMode(false)
+    setEditedContent('')
+  }
+
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText(editedContent || blogDraft.blog)
+    alert('Blog copied to clipboard!')
+  }
+
+  const downloadHTML = () => {
+    const content = editedContent || blogDraft.blog
+
+    // Wrap in full HTML document with styling
+    const fullHTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${blogDraft.metadata.title || 'Blog Post'}</title>
+  <meta name="description" content="${blogDraft.metadata.metaDescription || ''}">
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      line-height: 1.8;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 40px 20px;
+      color: #333;
+    }
+    h1 { font-size: 32px; font-weight: 700; margin: 0 0 24px 0; line-height: 1.3; }
+    h2 { font-size: 24px; font-weight: 600; margin: 32px 0 16px 0; line-height: 1.4; }
+    h3 { font-size: 18px; font-weight: 600; margin: 24px 0 12px 0; line-height: 1.4; }
+    p { margin: 0 0 16px 0; }
+    ul, ol { margin: 0 0 16px 0; padding-left: 28px; }
+    li { margin-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; margin: 24px 0; }
+    table th { background: #f5f5f5; font-weight: 600; text-align: left; padding: 12px 16px; border: 1px solid #ddd; }
+    table td { padding: 12px 16px; border: 1px solid #ddd; }
+    hr { border: none; border-top: 1px solid #ddd; margin: 32px 0; }
+    .meta-description { font-size: 16px; font-style: italic; color: #666; margin-bottom: 32px; padding: 16px; background: #f9f9f9; border-radius: 4px; }
+    .footer-meta { font-size: 14px; color: #999; margin-top: 32px; }
+  </style>
+</head>
+<body>
+${content}
+</body>
+</html>`
+
+    const blob = new Blob([fullHTML], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const fileName = `${blogDraft.metadata.companyName.replace(/[^a-zA-Z0-9]/g, '_')}_blog.html`
+    a.download = fileName
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const toggleEditMode = () => {
+    setEditMode(!editMode)
+  }
+
   useEffect(() => {
     fetchNotices()
     const interval = setInterval(() => fetchNotices(), 30 * 60 * 1000)
@@ -320,6 +420,102 @@ export default function Home() {
         *, *::before, *::after { box-sizing: border-box; }
         html, body { margin: 0; padding: 0; background: #000; }
         @keyframes spin { to { transform: rotate(360deg); } }
+
+        .blog-content h1 {
+          font-size: 28px;
+          font-weight: 600;
+          color: #fff;
+          margin: 0 0 24px 0;
+          line-height: 1.3;
+        }
+
+        .blog-content h2 {
+          font-size: 20px;
+          font-weight: 600;
+          color: #fff;
+          margin: 32px 0 16px 0;
+          line-height: 1.4;
+        }
+
+        .blog-content h3 {
+          font-size: 16px;
+          font-weight: 600;
+          color: #F4F4F4;
+          margin: 24px 0 12px 0;
+          line-height: 1.4;
+        }
+
+        .blog-content p {
+          margin: 0 0 16px 0;
+          color: #F4F4F4;
+          line-height: 1.8;
+        }
+
+        .blog-content ul, .blog-content ol {
+          margin: 0 0 16px 0;
+          padding-left: 24px;
+        }
+
+        .blog-content li {
+          margin-bottom: 8px;
+          color: #F4F4F4;
+          line-height: 1.7;
+        }
+
+        .blog-content table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 24px 0;
+          background: #1a1a1a;
+          border-radius: 4px;
+          overflow: hidden;
+        }
+
+        .blog-content table th {
+          background: #000;
+          color: #fff;
+          font-weight: 600;
+          text-align: left;
+          padding: 12px 16px;
+          border-bottom: 2px solid rgba(255,255,255,0.1);
+          font-size: 13px;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        .blog-content table td {
+          padding: 12px 16px;
+          color: #F4F4F4;
+          border-bottom: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .blog-content table tr:last-child td {
+          border-bottom: none;
+        }
+
+        .blog-content hr {
+          border: none;
+          border-top: 1px solid rgba(255,255,255,0.1);
+          margin: 32px 0;
+        }
+
+        .blog-content .meta-description {
+          font-size: 14px;
+          color: #F4F4F4;
+          opacity: 0.8;
+          font-style: italic;
+          margin-bottom: 32px;
+          padding: 16px;
+          background: rgba(255,255,255,0.05);
+          border-radius: 4px;
+        }
+
+        .blog-content .footer-meta {
+          font-size: 12px;
+          color: #F4F4F4;
+          opacity: 0.6;
+          margin-top: 32px;
+        }
       `}</style>
       <div style={{
         minHeight: '100vh',
@@ -523,6 +719,29 @@ export default function Home() {
                         onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#F4F4F4' }}
                       >
                         {analyzing === notice.id ? '...' : 'Analyze'}
+                      </button>
+                      <button
+                        onClick={() => draftBlogPost(notice)}
+                        disabled={draftingBlog === notice.id}
+                        title="Generate blog post"
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: 'transparent',
+                          color: '#F4F4F4',
+                          border: '1px solid #F4F4F4',
+                          borderRadius: '4px',
+                          cursor: draftingBlog === notice.id ? 'wait' : 'pointer',
+                          fontSize: '11px',
+                          fontWeight: '500',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseOver={(e) => { if (draftingBlog !== notice.id) { e.target.style.backgroundColor = '#fff'; e.target.style.color = '#000' }}}
+                        onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#F4F4F4' }}
+                      >
+                        {draftingBlog === notice.id ? 'Drafting...' : 'Draft Blog'}
                       </button>
                     </div>
                   </div>
@@ -765,6 +984,258 @@ export default function Home() {
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Blog Draft Modal */}
+        {showBlogModal && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.95)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px',
+            overflow: 'auto'
+          }} onClick={closeBlogModal}>
+            <div style={{
+              backgroundColor: '#262626',
+              borderRadius: '8px',
+              maxWidth: '900px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }} onClick={e => e.stopPropagation()}>
+              {/* Modal Header */}
+              <div style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                gap: '16px'
+              }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '11px',
+                    color: '#F4F4F4',
+                    textTransform: 'uppercase',
+                    letterSpacing: '1.5px',
+                    marginBottom: '4px'
+                  }}>
+                    Blog Draft
+                  </p>
+                  <h2 style={{
+                    margin: 0,
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    color: '#fff'
+                  }}>
+                    {blogDraft?.metadata?.companyName || 'Company Blog'}
+                  </h2>
+                  {blogDraft?.metadata?.companyNumber && (
+                    <p style={{
+                      margin: '4px 0 0',
+                      fontSize: '12px',
+                      color: '#F4F4F4',
+                      fontFamily: 'SF Mono, Roboto Mono, monospace'
+                    }}>
+                      Company #{blogDraft.metadata.companyNumber}
+                    </p>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                  <button
+                    onClick={copyToClipboard}
+                    style={{
+                      padding: '10px 18px',
+                      backgroundColor: 'transparent',
+                      color: '#F4F4F4',
+                      border: '1px solid #F4F4F4',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    📋 Copy
+                  </button>
+                  <button
+                    onClick={downloadHTML}
+                    style={{
+                      padding: '10px 18px',
+                      backgroundColor: 'transparent',
+                      color: '#F4F4F4',
+                      border: '1px solid #F4F4F4',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    ⬇️ Download HTML
+                  </button>
+                  <button
+                    onClick={toggleEditMode}
+                    style={{
+                      padding: '10px 18px',
+                      backgroundColor: editMode ? '#fff' : 'transparent',
+                      color: editMode ? '#000' : '#F4F4F4',
+                      border: `1px solid ${editMode ? '#fff' : '#F4F4F4'}`,
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {editMode ? '👁️ Preview' : '✏️ Edit'}
+                  </button>
+                  <button
+                    onClick={closeBlogModal}
+                    style={{
+                      padding: '10px 18px',
+                      backgroundColor: 'transparent',
+                      color: '#F4F4F4',
+                      border: '1px solid #F4F4F4',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px'
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Content */}
+              <div style={{
+                padding: '24px',
+                overflow: 'auto',
+                flex: 1
+              }}>
+                {editMode ? (
+                  <textarea
+                    value={editedContent}
+                    onChange={e => setEditedContent(e.target.value)}
+                    style={{
+                      width: '100%',
+                      minHeight: '500px',
+                      backgroundColor: '#1a1a1a',
+                      color: '#F4F4F4',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      borderRadius: '4px',
+                      padding: '16px',
+                      fontSize: '13px',
+                      fontFamily: 'SF Mono, Roboto Mono, monospace',
+                      lineHeight: '1.6',
+                      resize: 'vertical'
+                    }}
+                  />
+                ) : (
+                  <div
+                    className="blog-content"
+                    style={{
+                      color: '#F4F4F4',
+                      fontSize: '15px',
+                      lineHeight: '1.8'
+                    }}
+                    dangerouslySetInnerHTML={{ __html: editedContent || blogDraft?.blog }}
+                  />
+                )}
+              </div>
+
+              {/* Metadata Footer */}
+              {blogDraft?.metadata && (
+                <div style={{
+                  padding: '20px 24px',
+                  borderTop: '1px solid rgba(255,255,255,0.1)',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: '16px',
+                  fontSize: '12px'
+                }}>
+                  <div>
+                    <span style={{ color: '#F4F4F4', opacity: 0.7 }}>Word Count: </span>
+                    <span style={{
+                      color: blogDraft.metadata.wordCount >= 550 && blogDraft.metadata.wordCount <= 750 ? '#4ade80' : '#fbbf24',
+                      fontFamily: 'SF Mono, Roboto Mono, monospace',
+                      fontWeight: '600'
+                    }}>
+                      {blogDraft.metadata.wordCount}
+                      {blogDraft.metadata.wordCount >= 550 && blogDraft.metadata.wordCount <= 750 ? ' ✓' : ' ⚠️'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span style={{ color: '#F4F4F4', opacity: 0.7 }}>Primary Keyword: </span>
+                    <span style={{ color: '#fff' }}>
+                      {blogDraft.metadata.primaryKeyword}
+                      {blogDraft.metadata.searchVolume && (
+                        <span style={{ color: '#F4F4F4', opacity: 0.7 }}>
+                          {' '}({blogDraft.metadata.searchVolume}/mo)
+                        </span>
+                      )}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span style={{ color: '#F4F4F4', opacity: 0.7 }}>Internal Links: </span>
+                    <span style={{ color: '#fff', fontFamily: 'SF Mono, Roboto Mono, monospace' }}>
+                      {blogDraft.metadata.internalLinks}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span style={{ color: '#F4F4F4', opacity: 0.7 }}>Generated: </span>
+                    <span style={{ color: '#F4F4F4' }}>
+                      {new Date(blogDraft.metadata.generatedAt).toLocaleString('en-GB', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+
+                  {blogDraft.metadata.validation?.warnings?.length > 0 && (
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <div style={{
+                        backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                        border: '1px solid #fbbf24',
+                        borderRadius: '4px',
+                        padding: '12px',
+                        color: '#fbbf24'
+                      }}>
+                        <strong>⚠️ Warnings:</strong>
+                        <ul style={{ margin: '8px 0 0', paddingLeft: '20px' }}>
+                          {blogDraft.metadata.validation.warnings.map((w, i) => (
+                            <li key={i}>{w}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         )}
