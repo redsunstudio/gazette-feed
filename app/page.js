@@ -385,6 +385,37 @@ ${content}
     URL.revokeObjectURL(url)
   }
 
+  const downloadDOCX = async () => {
+    const content = editedContent || blogDraft.blog
+
+    // Import html-docx-js dynamically
+    const { default: htmlDocx } = await import('html-docx-js-typescript')
+
+    // Create a complete HTML document for DOCX conversion
+    const fullHTML = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>${blogDraft.metadata.title || 'Blog Post'}</title>
+</head>
+<body>
+${content}
+</body>
+</html>`
+
+    // Convert HTML to DOCX
+    const docx = htmlDocx.asBlob(fullHTML)
+
+    // Download the file
+    const url = URL.createObjectURL(docx)
+    const a = document.createElement('a')
+    a.href = url
+    const fileName = `${blogDraft.metadata.companyName.replace(/[^a-zA-Z0-9]/g, '_')}_blog.docx`
+    a.download = fileName
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   const toggleEditMode = () => {
     setEditMode(!editMode)
   }
@@ -1146,7 +1177,25 @@ ${content}
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    ⬇️ Download HTML
+                    HTML
+                  </button>
+                  <button
+                    onClick={downloadDOCX}
+                    style={{
+                      padding: '10px 18px',
+                      backgroundColor: 'transparent',
+                      color: '#F4F4F4',
+                      border: '1px solid #F4F4F4',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    DOCX
                   </button>
                   <button
                     onClick={toggleEditMode}
