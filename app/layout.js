@@ -1,6 +1,8 @@
+import Navigation from './Navigation'
+
 export const metadata = {
-  title: 'Gazette Insolvency Feed',
-  description: 'Monitor UK insolvencies, liquidations, and winding up petitions',
+  title: 'Administration List CRM',
+  description: 'Insolvency intelligence and analytics platform',
 }
 
 export default function RootLayout({ children }) {
@@ -12,6 +14,7 @@ export default function RootLayout({ children }) {
         padding: 0,
         backgroundColor: '#000'
       }}>
+        <Navigation />
         {children}
       </body>
     </html>
