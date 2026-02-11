@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 const FILTERS = [
   { id: 'all', label: 'All', prefixes: null },
@@ -9,6 +10,9 @@ const FILTERS = [
 ]
 
 export default function Home() {
+  const router = useRouter()
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [authChecked, setAuthChecked] = useState(false)
   const [notices, setNotices] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -385,11 +389,45 @@ ${content}
     setEditMode(!editMode)
   }
 
+  // Check authentication on mount
   useEffect(() => {
-    fetchNotices()
-    const interval = setInterval(() => fetchNotices(), 30 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [])
+    const auth = localStorage.getItem('gazette-auth')
+    if (auth === 'true') {
+      setIsAuthenticated(true)
+      setAuthChecked(true)
+    } else {
+      router.push('/login')
+    }
+  }, [router])
+
+  // Fetch notices after authentication
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchNotices()
+      const interval = setInterval(() => fetchNotices(), 30 * 60 * 1000)
+      return () => clearInterval(interval)
+    }
+  }, [isAuthenticated])
+
+  const handleLogout = () => {
+    localStorage.removeItem('gazette-auth')
+    router.push('/login')
+  }
+
+  // Show loading while checking auth
+  if (!authChecked || !isAuthenticated) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#000',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{ color: '#fff', fontSize: '14px' }}>Loading...</div>
+      </div>
+    )
+  }
 
   const filteredNotices = notices.filter(notice => {
     if (activeFilter === 'all') return true
@@ -524,30 +562,52 @@ ${content}
         fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
       }}>
         <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '48px 24px' }}>
-          <header style={{ marginBottom: '40px' }}>
-            <h1 style={{
-              margin: 0,
-              fontSize: '14px',
-              fontWeight: '500',
-              letterSpacing: '3px',
-              color: '#fff',
-              textTransform: 'uppercase'
-            }}>
-              GAZETTE FEED
-            </h1>
-            <p style={{ margin: '10px 0 0', color: '#F4F4F4', fontSize: '14px' }}>
-              UK insolvency notices
-              {cacheInfo && (
-                <span style={{ color: '#F4F4F4' }}>
-                  {' · '}
-                  {cacheInfo.cached ? (
-                    <>{Math.round(cacheInfo.cacheAge / 60)}m ago</>
-                  ) : (
-                    <>live</>
-                  )}
-                </span>
-              )}
-            </p>
+          <header style={{ marginBottom: '40px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <h1 style={{
+                margin: 0,
+                fontSize: '14px',
+                fontWeight: '500',
+                letterSpacing: '3px',
+                color: '#fff',
+                textTransform: 'uppercase'
+              }}>
+                GAZETTE FEED
+              </h1>
+              <p style={{ margin: '10px 0 0', color: '#F4F4F4', fontSize: '14px' }}>
+                UK insolvency notices
+                {cacheInfo && (
+                  <span style={{ color: '#F4F4F4' }}>
+                    {' · '}
+                    {cacheInfo.cached ? (
+                      <>{Math.round(cacheInfo.cacheAge / 60)}m ago</>
+                    ) : (
+                      <>live</>
+                    )}
+                  </span>
+                )}
+              </p>
+            </div>
+            <button
+              onClick={handleLogout}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: 'transparent',
+                color: '#F4F4F4',
+                border: '1px solid #F4F4F4',
+                borderRadius: '4px',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: '500',
+                textTransform: 'uppercase',
+                letterSpacing: '1px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseOver={(e) => { e.target.style.backgroundColor = '#fff'; e.target.style.color = '#000' }}
+              onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#F4F4F4' }}
+            >
+              Logout
+            </button>
           </header>
 
           <div style={{ display: 'flex', gap: '8px', marginBottom: '32px', flexWrap: 'wrap', alignItems: 'center' }}>
