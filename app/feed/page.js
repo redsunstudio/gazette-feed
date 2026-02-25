@@ -36,6 +36,12 @@ export default function Home() {
   const [editMode, setEditMode] = useState(false)
   const [editedContent, setEditedContent] = useState('')
 
+  // LinkedIn drafting state
+  const [draftingLinkedIn, setDraftingLinkedIn] = useState(null)
+  const [linkedInDraft, setLinkedInDraft] = useState(null)
+  const [showLinkedInModal, setShowLinkedInModal] = useState(false)
+  const [editedLinkedIn, setEditedLinkedIn] = useState('')
+
   const fetchNotices = async (forceRefresh = false) => {
     try {
       setLoading(true)
@@ -420,6 +426,44 @@ ${content}
     setEditMode(!editMode)
   }
 
+  const draftLinkedInPost = async (notice) => {
+    setDraftingLinkedIn(notice.id)
+    try {
+      const res = await fetch('/api/draft-linkedin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: notice.title,
+          noticeType: notice.noticeType,
+          noticeDate: notice.published,
+          noticeLink: notice.link
+        })
+      })
+
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+
+      setLinkedInDraft(data)
+      setEditedLinkedIn(data.post)
+      setShowLinkedInModal(true)
+    } catch (err) {
+      alert(`Failed to draft LinkedIn post: ${err.message}`)
+    } finally {
+      setDraftingLinkedIn(null)
+    }
+  }
+
+  const closeLinkedInModal = () => {
+    setShowLinkedInModal(false)
+    setLinkedInDraft(null)
+    setEditedLinkedIn('')
+  }
+
+  const copyLinkedInToClipboard = async () => {
+    await navigator.clipboard.writeText(editedLinkedIn || linkedInDraft.post)
+    alert('LinkedIn post copied to clipboard!')
+  }
+
   // Check authentication on mount
   useEffect(() => {
     const auth = localStorage.getItem('gazette-auth')
@@ -780,6 +824,29 @@ ${content}
                         onMouseOut={(e) => { e.target.style.backgroundColor = 'transparent'; e.target.style.color = '#F4F4F4' }}
                       >
                         {draftingBlog === notice.id ? 'Drafting...' : 'Draft Blog'}
+                      </button>
+                      <button
+                        onClick={() => draftLinkedInPost(notice)}
+                        disabled={draftingLinkedIn === notice.id}
+                        title="Generate LinkedIn post"
+                        style={{
+                          padding: '8px 16px',
+                          backgroundColor: 'transparent',
+                          color: '#F4F4F4',
+                          border: '1px solid #F4F4F4',
+                          borderRadius: '4px',
+                          cursor: draftingLinkedIn === notice.id ? 'wait' : 'pointer',
+                          fontSize: '11px',
+                          fontWeight: '500',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          whiteSpace: 'nowrap',
+                          transition: 'all 0.2s ease'
+                        }}
+                        onMouseOver={(e) => { if (draftingLinkedIn !== notice.id) { e.currentTarget.style.backgroundColor = '#0077B5'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#0077B5' }}}
+                        onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#F4F4F4'; e.currentTarget.style.borderColor = '#F4F4F4' }}
+                      >
+                        {draftingLinkedIn === notice.id ? 'Drafting...' : 'LinkedIn'}
                       </button>
                     </div>
                   </div>
@@ -1295,6 +1362,171 @@ ${content}
             </div>
           </div>
         )}
+        {/* LinkedIn Draft Modal */}
+        {showLinkedInModal && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.95)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+            padding: '20px',
+            overflow: 'auto'
+          }} onClick={closeLinkedInModal}>
+            <div style={{
+              backgroundColor: '#262626',
+              borderRadius: '8px',
+              maxWidth: '640px',
+              width: '100%',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column'
+            }} onClick={e => e.stopPropagation()}>
+
+              {/* Modal Header */}
+              <div style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+                gap: '16px'
+              }}>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p style={{
+                    margin: 0,
+                    fontSize: '11px',
+                    color: '#0077B5',
+                    textTransform: 'uppercase',
+                    letterSpacing: '1.5px',
+                    marginBottom: '4px'
+                  }}>
+                    LinkedIn Post
+                  </p>
+                  <h2 style={{
+                    margin: 0,
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    color: '#fff'
+                  }}>
+                    {linkedInDraft?.metadata?.companyName || 'LinkedIn Draft'}
+                  </h2>
+                  {linkedInDraft?.metadata?.companyNumber && (
+                    <p style={{
+                      margin: '4px 0 0',
+                      fontSize: '12px',
+                      color: '#F4F4F4',
+                      fontFamily: 'SF Mono, Roboto Mono, monospace'
+                    }}>
+                      Company #{linkedInDraft.metadata.companyNumber}
+                    </p>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                  <button
+                    onClick={copyLinkedInToClipboard}
+                    style={{
+                      padding: '10px 18px',
+                      backgroundColor: '#0077B5',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    Copy Post
+                  </button>
+                  <button
+                    onClick={closeLinkedInModal}
+                    style={{
+                      padding: '10px 18px',
+                      backgroundColor: 'transparent',
+                      color: '#F4F4F4',
+                      border: '1px solid #F4F4F4',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '11px',
+                      fontWeight: '500',
+                      textTransform: 'uppercase',
+                      letterSpacing: '1px'
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+
+              {/* Post Content — editable textarea */}
+              <div style={{ padding: '24px', overflow: 'auto', flex: 1 }}>
+                <textarea
+                  value={editedLinkedIn}
+                  onChange={e => setEditedLinkedIn(e.target.value)}
+                  style={{
+                    width: '100%',
+                    minHeight: '420px',
+                    backgroundColor: '#1a1a1a',
+                    color: '#F4F4F4',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '4px',
+                    padding: '16px',
+                    fontSize: '14px',
+                    fontFamily: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif',
+                    lineHeight: '1.7',
+                    resize: 'vertical',
+                    boxSizing: 'border-box'
+                  }}
+                />
+              </div>
+
+              {/* Footer — character count */}
+              <div style={{
+                padding: '16px 24px',
+                borderTop: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                gap: '24px',
+                fontSize: '12px',
+                alignItems: 'center'
+              }}>
+                <div>
+                  <span style={{ color: '#F4F4F4', opacity: 0.7 }}>Characters: </span>
+                  <span style={{
+                    color: (editedLinkedIn || '').length <= 1300 ? '#4ade80' : '#ef4444',
+                    fontFamily: 'SF Mono, Roboto Mono, monospace',
+                    fontWeight: '600'
+                  }}>
+                    {(editedLinkedIn || '').length}
+                  </span>
+                  <span style={{ color: '#F4F4F4', opacity: 0.4 }}> / 1,300</span>
+                </div>
+                {linkedInDraft?.cached && (
+                  <div style={{ color: '#F4F4F4', opacity: 0.5 }}>Cached</div>
+                )}
+                {linkedInDraft?.metadata?.generatedAt && (
+                  <div style={{ marginLeft: 'auto' }}>
+                    <span style={{ color: '#F4F4F4', opacity: 0.5 }}>
+                      {new Date(linkedInDraft.metadata.generatedAt).toLocaleString('en-GB', {
+                        day: 'numeric',
+                        month: 'short',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </>
   )
