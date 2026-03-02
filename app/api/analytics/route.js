@@ -7,6 +7,10 @@ export const maxDuration = 60
 const GA4_PROPERTY_ID = process.env.GA4_PROPERTY_ID || '387402170'
 const SHOW_REVENUE = process.env.SHOW_REVENUE === 'true'
 
+// Subscription prices
+const MONTHLY_PRICE = 24.95
+const ANNUAL_PRICE = 185
+
 let _ga4Client = null
 const _cache = {}
 const CACHE_TTL = 300 // 5 minutes
@@ -157,12 +161,22 @@ export async function GET(request) {
       limit: 50
     }
 
+    // Query 5: Ad spend by channel (GA4 cost import from Google Ads)
+    const adSpendRequest = {
+      property,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+      metrics: [{ name: 'advertisingCost' }],
+      limit: 50
+    }
+
     // Execute all queries in parallel
-    const [convResponse, srcResponse, trafResponse, chanResponse] = await Promise.all([
+    const [convResponse, srcResponse, trafResponse, chanResponse, adSpendResponse] = await Promise.all([
       client.runReport(conversionRequest),
       client.runReport(sourceRequest),
       client.runReport(trafficRequest),
-      client.runReport(channelRequest)
+      client.runReport(channelRequest),
+      client.runReport(adSpendRequest).catch(() => [{ rows: [] }])
     ])
 
     // Process conversions → KPIs + trend
@@ -195,13 +209,29 @@ export async function GET(request) {
       }
     }
 
+    // Calculate KPI values using subscription prices
+    kpis.monthlyValue = kpis.monthly * MONTHLY_PRICE
+    kpis.annualValue = kpis.annual * ANNUAL_PRICE
+    kpis.totalValue = kpis.monthlyValue + kpis.annualValue
+
     const trendSorted = Object.entries(trend)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([yearMonth, values]) => ({
         yearMonth,
         label: formatYearMonth(yearMonth),
-        ...values
+        ...values,
+        revenue: (values.monthly * MONTHLY_PRICE) + (values.annual * ANNUAL_PRICE)
       }))
+
+    // Process ad spend by channel
+    const adSpend = {}
+    if (adSpendResponse[0]?.rows) {
+      for (const row of adSpendResponse[0].rows) {
+        const channel = row.dimensionValues[0].value
+        const cost = parseFloat(row.metricValues[0].value) || 0
+        if (cost > 0) adSpend[channel] = (adSpend[channel] || 0) + cost
+      }
+    }
 
     // Process sources
     const sources = {}
@@ -210,10 +240,9 @@ export async function GET(request) {
         const channel = row.dimensionValues[0].value
         const event = row.dimensionValues[1].value
         const count = parseInt(row.metricValues[0].value)
-        const value = parseFloat(row.metricValues[1].value)
 
         if (!sources[channel]) {
-          sources[channel] = { monthly: 0, annual: 0, purchases: 0, revenue: 0.0 }
+          sources[channel] = { monthly: 0, annual: 0, purchases: 0 }
         }
 
         if (event === 'Monthly subscription') {
@@ -223,17 +252,22 @@ export async function GET(request) {
         } else if (event === 'Purchase' || event === 'purchase') {
           sources[channel].purchases += count
         }
-
-        sources[channel].revenue += value
       }
     }
 
     const sourceList = Object.entries(sources)
-      .map(([channel, data]) => ({
-        channel,
-        total: data.monthly + data.annual + data.purchases,
-        ...data
-      }))
+      .map(([channel, data]) => {
+        const value = (data.monthly * MONTHLY_PRICE) + (data.annual * ANNUAL_PRICE)
+        const spend = adSpend[channel] || 0
+        return {
+          channel,
+          total: data.monthly + data.annual + data.purchases,
+          value,
+          adSpend: spend > 0 ? spend : null,
+          roas: spend > 0 ? Math.round((value / spend) * 100) / 100 : null,
+          ...data
+        }
+      })
       .sort((a, b) => b.total - a.total)
 
     // Process traffic
@@ -276,6 +310,7 @@ export async function GET(request) {
       sources: sourceList,
       traffic,
       channels,
+      prices: { monthly: MONTHLY_PRICE, annual: ANNUAL_PRICE },
       show_revenue: SHOW_REVENUE,
       date_range: { start: startDate, end: endDate }
     }

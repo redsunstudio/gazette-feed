@@ -183,7 +183,7 @@ export default function Dashboard() {
           <>
             <div style={{
               display: 'grid',
-              gridTemplateColumns: data.show_revenue ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)',
+              gridTemplateColumns: 'repeat(4, 1fr)',
               gap: '12px',
               marginBottom: '40px'
             }}>
@@ -194,6 +194,9 @@ export default function Dashboard() {
                 <div style={{ fontSize: '36px', fontWeight: '600', color: '#fff', lineHeight: '1' }}>
                   {data.kpis.monthly}
                 </div>
+                <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>
+                  £{data.kpis.monthlyValue?.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} @ £{data.prices?.monthly}/mo
+                </div>
               </div>
 
               <div style={{ background: '#262626', borderRadius: '8px', padding: '24px' }}>
@@ -202,6 +205,9 @@ export default function Dashboard() {
                 </div>
                 <div style={{ fontSize: '36px', fontWeight: '600', color: '#fff', lineHeight: '1' }}>
                   {data.kpis.annual}
+                </div>
+                <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>
+                  £{data.kpis.annualValue?.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} @ £{data.prices?.annual}/yr
                 </div>
               </div>
 
@@ -212,65 +218,26 @@ export default function Dashboard() {
                 <div style={{ fontSize: '36px', fontWeight: '600', color: '#fff', lineHeight: '1' }}>
                   {data.kpis.purchases}
                 </div>
+                <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>
+                  One-off transactions
+                </div>
               </div>
 
-              {data.show_revenue && (
-                <div style={{ background: '#262626', borderRadius: '8px', padding: '24px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '1.5px', color: '#F4F4F4', marginBottom: '12px' }}>
-                    Revenue
-                  </div>
-                  <div style={{ fontSize: '36px', fontWeight: '600', color: '#fff', lineHeight: '1' }}>
-                    £{Math.round(data.kpis.revenue).toLocaleString()}
-                  </div>
+              <div style={{ background: '#262626', borderRadius: '8px', padding: '24px' }}>
+                <div style={{ fontSize: '11px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '1.5px', color: '#F4F4F4', marginBottom: '12px' }}>
+                  Total Value
                 </div>
-              )}
+                <div style={{ fontSize: '36px', fontWeight: '600', color: '#fff', lineHeight: '1' }}>
+                  £{Math.round(data.kpis.totalValue || 0).toLocaleString()}
+                </div>
+                <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>
+                  Subs revenue in period
+                </div>
+              </div>
             </div>
 
-            {/* Trend Data */}
-            {data.trend && data.trend.length > 0 && (
-              <div style={{ marginBottom: '40px' }}>
-                <div style={{
-                  fontSize: '11px',
-                  fontWeight: '500',
-                  textTransform: 'uppercase',
-                  letterSpacing: '2px',
-                  color: '#F4F4F4',
-                  marginBottom: '16px',
-                  paddingBottom: '8px',
-                  borderBottom: '1px solid #262626'
-                }}>
-                  Subscriptions by Month
-                </div>
-                <div style={{ background: '#262626', borderRadius: '8px', padding: '24px', overflowX: 'auto' }}>
-                  <table style={{ width: '100%', fontSize: '12px' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ textAlign: 'left', padding: '8px', color: '#F4F4F4', fontWeight: '500' }}>Month</th>
-                        <th style={{ textAlign: 'right', padding: '8px', color: '#F4F4F4', fontWeight: '500' }}>Monthly</th>
-                        <th style={{ textAlign: 'right', padding: '8px', color: '#F4F4F4', fontWeight: '500' }}>Annual</th>
-                        <th style={{ textAlign: 'right', padding: '8px', color: '#F4F4F4', fontWeight: '500' }}>Purchases</th>
-                        <th style={{ textAlign: 'right', padding: '8px', color: '#F4F4F4', fontWeight: '500' }}>Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {data.trend.map(row => (
-                        <tr key={row.yearMonth}>
-                          <td style={{ padding: '8px', color: '#fff' }}>{row.label}</td>
-                          <td style={{ textAlign: 'right', padding: '8px', color: '#fff' }}>{row.monthly}</td>
-                          <td style={{ textAlign: 'right', padding: '8px', color: '#fff' }}>{row.annual}</td>
-                          <td style={{ textAlign: 'right', padding: '8px', color: '#fff' }}>{row.purchase}</td>
-                          <td style={{ textAlign: 'right', padding: '8px', color: '#fff', fontWeight: '600' }}>
-                            {row.monthly + row.annual + row.purchase}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
 
-            {/* Traffic Channels */}
+            {/* Traffic by Channel — merged with conversions */}
             {data.channels && data.channels.length > 0 && (
               <div style={{ marginBottom: '40px' }}>
                 <div style={{
@@ -291,21 +258,30 @@ export default function Dashboard() {
                       <tr>
                         <th style={{ textAlign: 'left', padding: '8px', color: '#F4F4F4', fontWeight: '500' }}>Channel</th>
                         <th style={{ textAlign: 'right', padding: '8px', color: '#F4F4F4', fontWeight: '500' }}>Sessions</th>
-                        <th style={{ textAlign: 'right', padding: '8px', color: '#F4F4F4', fontWeight: '500' }}>Users</th>
-                        <th style={{ textAlign: 'right', padding: '8px', color: '#F4F4F4', fontWeight: '500' }}>New Users</th>
                         <th style={{ textAlign: 'right', padding: '8px', color: '#F4F4F4', fontWeight: '500' }}>% of Total</th>
+                        <th style={{ textAlign: 'right', padding: '8px', color: '#F4F4F4', fontWeight: '500' }}>Monthly Subs</th>
+                        <th style={{ textAlign: 'right', padding: '8px', color: '#F4F4F4', fontWeight: '500' }}>Annual Subs</th>
+                        <th style={{ textAlign: 'right', padding: '8px', color: '#F4F4F4', fontWeight: '500' }}>Purchases</th>
+                        <th style={{ textAlign: 'right', padding: '8px', color: '#F4F4F4', fontWeight: '500' }}>Revenue</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {data.channels.map(channel => (
-                        <tr key={channel.channel}>
-                          <td style={{ padding: '8px', color: '#fff' }}>{channel.channel}</td>
-                          <td style={{ textAlign: 'right', padding: '8px', color: '#fff' }}>{channel.sessions.toLocaleString()}</td>
-                          <td style={{ textAlign: 'right', padding: '8px', color: '#fff' }}>{channel.users.toLocaleString()}</td>
-                          <td style={{ textAlign: 'right', padding: '8px', color: '#fff' }}>{channel.newUsers.toLocaleString()}</td>
-                          <td style={{ textAlign: 'right', padding: '8px', color: '#fff', fontWeight: '600' }}>{channel.pct}%</td>
-                        </tr>
-                      ))}
+                      {data.channels.map(channel => {
+                        const conv = (data.sources || []).find(s => s.channel === channel.channel) || {}
+                        return (
+                          <tr key={channel.channel}>
+                            <td style={{ padding: '8px', color: '#fff' }}>{channel.channel}</td>
+                            <td style={{ textAlign: 'right', padding: '8px', color: '#fff' }}>{channel.sessions.toLocaleString()}</td>
+                            <td style={{ textAlign: 'right', padding: '8px', color: '#fff' }}>{channel.pct}%</td>
+                            <td style={{ textAlign: 'right', padding: '8px', color: '#fff' }}>{conv.monthly || '—'}</td>
+                            <td style={{ textAlign: 'right', padding: '8px', color: '#fff' }}>{conv.annual || '—'}</td>
+                            <td style={{ textAlign: 'right', padding: '8px', color: '#fff' }}>{conv.purchases || '—'}</td>
+                            <td style={{ textAlign: 'right', padding: '8px', color: conv.value ? '#fff' : '#555', fontWeight: conv.value ? '600' : '400' }}>
+                              {conv.value ? `£${Math.round(conv.value).toLocaleString()}` : '—'}
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
